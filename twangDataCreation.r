@@ -246,7 +246,15 @@ df3$timestamp<-format(df3$timestamp,tz="America/New_York")
 df3$status<-factor(df3$status,levels=c(0,1))
 
 #now merge this with the weather and aspm data
+#Note METAR is limited to 2013
 twangdf<-merge(metar_aspm,df3,all.x=TRUE)
 #The hours with NA's should be replaced with the "NO GDP" level
 twangdf$status[is.na(twangdf$status)]<-0
+
+
+#merge with aspm
+twang_taf_aspm<-merge(twang_taf,aspm,all.x=TRUE)
+
+#the above data.frame contains lists for various columns so use
+twang_taf_aspm_nolists<-data.frame(lapply(twang_taf_aspm,as.character),stringsAsFactors=FALSE)
 
