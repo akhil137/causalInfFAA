@@ -266,12 +266,22 @@ twang_taf.lga<-twang_taf_aspm_nolists[,grep("LGA",colnames(twang_taf_aspm_nolist
 #the above can be written to csv but there are various NA
 #we convert to numeric and factor vectors and get rid of records with NA
 twang_taf.jfk[,c(1,2,7,8)]<-sapply(twang_taf.jfk[,c(1,2,7,8)],as.numeric)
-twang_taf.jfk[,c(3,4,5,6)]<-sapply(twang_taf.jfk[,c(3,4,5,6)],as.factor)
+#below does not work to conver these columns to factors
+#twang_taf.jfk[,c(3,4,5,6)]<-sapply(twang_taf.jfk[,c(3,4,5,6)],as.factor)
+#use instead
+library(plyr)
+twang_taf.jfk[,c(3,4,5,6)]<-colwise(as.factor,c(3,4,5,6))(twang_taf.jfk)
+#only keep non-NA records
 twang_taf.jfk<-twang_taf.jfk[complete.cases(twang_taf.jfk),]
+#must convert treatment to numeric for ps() to work in twang
+twang_taf.jfk$status_JFK<-as.numeric(twang_taf.jfk$status_JFK)-1
 
 twang_taf.ewr[,c(1,2,7,8)]<-sapply(twang_taf.ewr[,c(1,2,7,8)],as.numeric)
-twang_taf.ewr[,c(3,4,5,6)]<-sapply(twang_taf.ewr[,c(3,4,5,6)],as.factor)
+twang_taf.ewr[,c(3,4,5,6)]<-colwise(as.factor,c(3,4,5,6))(twang_taf.ewr)
 twang_taf.ewr<-twang_taf.ewr[complete.cases(twang_taf.ewr),]
+twang_taf.ewr$status_EWR<-as.numeric(twang_taf.ewr$status_EWR)-1
 
 twang_taf.lga[,c(1,2,3,8,9)]<-sapply(twang_taf.lga[,c(1,2,3,8,9)],as.numeric)
-twang_taf.lga[,c(4,5,6,7)]<-sapply(twang_taf.lga[,c(4,5,6,7)],as.factor)
+twang_taf.lga[,c(4,5,6,7)]<-colwise(as.factor,c(4,5,6,7))(twang_taf.lga)
+twang_taf.lga<-twang_taf.lga[complete.cases(twang_taf.lga),]
+twang_taf.lga$status_LGA<-as.numeric(twang_taf.lga$status_LGA)-1
