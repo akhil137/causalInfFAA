@@ -258,3 +258,20 @@ twang_taf_aspm<-merge(twang_taf,aspm,all.x=TRUE)
 #the above data.frame contains lists for various columns so use
 twang_taf_aspm_nolists<-data.frame(lapply(twang_taf_aspm,as.character),stringsAsFactors=FALSE)
 
+#extract out individual ap w/o timestamps for easy ps fitting
+twang_taf.jfk<-twang_taf_aspm_nolists[,grep("JFK",colnames(twang_taf_aspm_nolists))]
+twang_taf.ewr<-twang_taf_aspm_nolists[,grep("EWR",colnames(twang_taf_aspm_nolists))]
+twang_taf.lga<-twang_taf_aspm_nolists[,grep("LGA",colnames(twang_taf_aspm_nolists))]
+
+#the above can be written to csv but there are various NA
+#we convert to numeric and factor vectors and get rid of records with NA
+twang_taf.jfk[,c(1,2,7,8)]<-sapply(twang_taf.jfk[,c(1,2,7,8)],as.numeric)
+twang_taf.jfk[,c(3,4,5,6)]<-sapply(twang_taf.jfk[,c(3,4,5,6)],as.factor)
+twang_taf.jfk<-twang_taf.jfk[complete.cases(twang_taf.jfk),]
+
+twang_taf.ewr[,c(1,2,7,8)]<-sapply(twang_taf.ewr[,c(1,2,7,8)],as.numeric)
+twang_taf.ewr[,c(3,4,5,6)]<-sapply(twang_taf.ewr[,c(3,4,5,6)],as.factor)
+twang_taf.ewr<-twang_taf.ewr[complete.cases(twang_taf.ewr),]
+
+twang_taf.lga[,c(1,2,3,8,9)]<-sapply(twang_taf.lga[,c(1,2,3,8,9)],as.numeric)
+twang_taf.lga[,c(4,5,6,7)]<-sapply(twang_taf.lga[,c(4,5,6,7)],as.factor)

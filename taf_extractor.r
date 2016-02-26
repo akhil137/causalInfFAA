@@ -96,3 +96,4 @@ twang_taf$status_LGA[is.na(twang_taf$status_LGA)]<-0
 twang_taf$status_EWR[is.na(twang_taf$status_EWR)]<-0
 #some random rows for exploratory
 twang_taf[sample(dim(twang_taf)[1],6),]
+
