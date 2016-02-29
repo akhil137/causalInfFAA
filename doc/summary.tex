@@ -1,0 +1,125 @@
+\section{Introduction}
+
+\emph{from apreport}
+The Federal Aviation Administration (FAA) is the governmental agency which sets policies for the management of air transportation in the United States.  Day-to-Day management of air transportation is lead by the Air Traffic Control System Command Center (ATCSCC) which has ``final approval authority for all national traffic management initiatives.?  The ATCSCC implements its authority by publishing timely Air Traffic Flow Management Initiatives (ATFMI), regularly consulting with Airline Operation Centers (AOC) using a process known as Collaborative Decision Making (CDM).   
+
+
+Air Traffic Control System Command Center and at airline operations centers regularly implement Air Traffic Flow Management Initiatives (ATFMIs) such as Ground Delay Programs (GDPs) purposefully delaying, canceling, and rerouting flights. These initiatives increase the safety and efficiency of the nation?s air transportation system, for example by replacing airborne delay with ground delay, and are necessary during inclement weather and in other situations where demand for system resources exceeds capacity.
+
+\subsection{In statistical parlance, our datasets would comprise an 'observational study'}
+
+Analysis of historical ATFMIs can in principal demonstrate the relative merits of courses of action but must account for the distinct conditions faced during planning and operations.
+
+As one study reported, ?clustering techniques appear to be promising methods for identifying the major causes of Ground Delay Programs? ([5]).
+
+\emph{from airspace report}
+It is currently very difficult to compare, in any rigorous sense, how TFMIs or, more generally, the nation?s air traffic control system performs during different time periods. The key problem is uncertainty regarding the degree to which differences in delays, the number and severity of safety incidents, etc. are or are not attributable to the different conditions faced during distinct time periods. Transparent, reproducible analyses with easy to explore results identifying sets of similar days from the perspective of TFMI planning and/or operations would help.
+
+\subsection{why prop score rather than regression based adjustment techniques}
+
+Regression-based covariate adjustment techniques correct for imbalances between groups on pretreatment covariates by controlling for them in regression models for the outcomes.  As explained in  \cite{mccaffrey2013tutorial}, there are several reasons why propensity score techniques are advantageous over such regression-based techniques
+
+
+
+
+
+
+\subsection{Confounding, Potential Outcomes, and Propensity Scores}
+The rigorous statistical methods of causal inference, and more specifically the Rubin potential outcomes framework \cite{rubin1974estimating}, on which the propensity score methods are based, have been applied in various domains such as education, economics, and medicine.  We believe the reader will find it beneficial to briefly consider a concrete application of propensity score methods from medicine, which will also explain some of the nomenclature (e.g. ``treatment assignment") and make the translation of these methods to a new domain (ATM, specifically) more intuitive.  
+
+Consider the case of evaluating the efficacy of a medical treatment.  One option is to implement randomized control trials, which is commonly done for a variety of pharmaceutical drugs.  However randomized control trials, considered the gold-standard to statistically evaluate the effects of a treatment \cite{austin2011introduction}, are not always possible to implement.  For example, lets consider the efficacy of smoking cessation counseling for smokers admitted to a hospital for a heart attack \cite{austin2011tutorial}.  In particular, we are interested in the following question: does smoking cessation counseling, prior to discharge from the hospital, increase the lifespan of smokers who have suffered a heart attack?  If a randomized control trial were possible in this situation, then the usual methods of regression would suffice to answer this question statistically.  However in this case, as in many other situations, there are various barriers to voluntary participation and completion of treatment, and thus a random controlled experiment is not possible.  Statisticians call such a situation an ``observational study," and commonly, there are systematic differences between patients who receive treatment and those who do not, which must be accounted for in a sound methodological manner when assessing the effect of a treatment on the outcome of interest (e.g. mortality).  We note that in the case of air traffic management, TFMI data must also be considered observational, as various ``treatments" (e.g. GDP) are not applied randomly but are the consequence of a complex decision making process based on various covariates such as weather, traffic, and capacity characteristics.  
+
+Returning to our medical example of an observational study \cite{austin2011tutorial}, various types of data on the roughly 2300 heart-attack patients was collected when they were initially admitted: demographic factors (e.g. age and sex); vital signs (e.g. hear rate, blood pressure); cardiac risk factors (e.g. diabetes, hypertension); comorbid conditions (e.g. previous history of cancer, asthma, etc.); lab tests (e.g. glucose); and medication usage.  In total, 33 covariates, continuous and categorical, were measured for all 2300 patients and form the baseline characteristics of the study sample.  Of the $N=2300$ patients, roughly $2/3$ were offered the treatment of smoking cessation counseling.  When the baseline characteristic data were analyzed, most of the 33 covariates were systematically different (in a statistically significant manner) between the ``treatment group" (patients who received smoking cessation counseling prior to discharge) and the ``control group" (patients who did not receive counseling).  For example the mean age for the treatment group was about 56, whereas for the control group, it was 60.  This difference was statistically significant\footnote{Recall from statistics, whether differences between the standardized means of two samples is due to chance or because they are drawn from two systematically different populations, can be assessed by testing likelihood of the null hypothesis (samples are drawn from the same population) as reflected by the ``p-value" of the test statistic.  Usually, p-values of less than 0.01 are considered evidence to reject the null-hypothesis, namely reject the hypothesis that the samples were drawn from the same population.} with a p-value of less than 0.001, indicating a systematic difference, on this characteristic (age) between those patients offered treatment and those that were not.  On the other hand, covariates such as blood pressure between the treatment and control group were not different in a statistically significant manner.  Note that even before considering the effect of the treatment on the outcome of interest (mortality), there are statistical differences between the group offered treatment and not offered treatment. In a randomized control trial, these baseline characteristics would not be different in a statistically significant manner.  
+
+\subsection{Translating the medical analogy to ATM domain}
+Insert analogy table here
+
+\subsection{Confounding}
+As explained in \cite{austin2011introduction}, the fundamental difficulty of observational studies versus random controlled trials, is the presence of \emph{confounding}:  the outcome of interest (e.g. mortality) is influenced by both the treatment status (i.e. whether the patient received or did not receive treatment) and the baseline characteristics, which are often systematically different between the treatment and control groups.  Although there exist regression adjustment techniques that attempt to account for confounding, there are many reasons for which they are not robust, and we will shortly list those reasons \cite{austin2011introduction,austin2011tutorial, \cite{mccaffrey2013tutorial}, but first we present the alternative method to eliminate or reduce confounding using propensity scores and the potential outcomes framework on which they are based.
+
+\subsection{Potential Outcomes}
+The Rubin potential outcomes framework \cite{rubin1974estimating} imagines two possible treatments for each patient - i.e. a treatment and control, and denotes the treatment status for each patient/subject with the indicator variable $Z$ ($Z=0$ for control and $Z=1$ for treatment).  For each subject the effect of the treatment on the outcome (e.g. mortality) $Y$ is defined to be $Y_i(Z=1) - Y_i(Z=0)$.  Notice however that for each subject, only one reality is observed, and thus to compute effect, we must be able to statistically estimate the counterfactual or potential outcome.  For example, for a subject who ultimately receives treatment, we can only observe $Y_i(Z=1)$, but not the counterfactual $Y_i(Z=0)$.  The potential outcomes framework attempts to estimate counterfactuals so that the average effect of the treatment can be computed either for all subjects, called the average treatment effect (ATE),  or for only the subject that received treatment, called the average treatment effect on the treated (ATT).  Note that the analyst must decide which quantity is more appropriate to estimate; for example in the smoking cessation counseling example, an intensive treatment , ATT is the appropriate quantity to estimate as it is not realistic that all patients would likely elect treatment \cite{austin2011tutorial}.  However if the treatment were instead a brochure on smoking, the barrier to treatment entry is low, and thus ATE would be appropriate to estimate as it is realistic to assume that all subjects could potentially be part of either treatment or control group.  We argue  that in our context of TFMI ``treatments" (e.g. GDP), ATT is the more appropriate quantity to estimate, because it is unrealistic to assume that all time-periods (e.g. even those with ``good" weather and normal traffic and capacity characteristics) would potentially be subject to TFMI action.  Also note that to calculate ATT, $E[Y(Z=1) - Y(Z=0)| Z=1]$, we only need to estimate the counterfactual for subjects in the treatment group (i.e. estimate the counterfactual Y(Z=0) for the treated subjects), whereas for ATE, the counterfactual for the control group must also be estimated.  
+
+In the next section we explain how confounding can be eliminated by balancing the baseline characteristics using the propensity score.  The aim of balancing pretreatment covariates can also be viewed as transforming data from an observational study so it resembles the gold standard of a randomized control trial \cite{austin2011introduction}.  
+
+\subsection{Propensity Score}
+The propensity score is defined as $e_i=Pr(Z_i=1|X_i)$, namely the \emph{probability} that subject $i$ with baseline characteristics described by the covariate vector $X_i$ is assigned to the treatment group.  Note that all subjects have a propensity score in the potential outcomes framework, regardless of whether they were actually in the treatment or control group.  The important statistical property of the propensity score is that it is a \emph{balancing score} \cite{austin2011introduction}: conditional on the propensity score, the distribution of baseline covariates is similar between treated and control subjects.  Thus for a set of subjects with the same propensity score (value of $e_i$), there should be no statistically significant difference in baseline covariates, and thus a counterfactual outcome can be estimated, allowing the eventual estimate of ATT or ATE.  
+
+Thus far we have summarized the fundamental obstruction to causal analysis in observational studies, namely confounding, and have also reviewed how the potential outcomes framework and counterfactual estimation can be used in principal to overcome confounding, and how the propensity score's balancing property can provide such counterfactual estimation\footnote{See \cite{austin2011introduction} for the further discussion on statistical assumptions that underly the balancing property of propensity scores and which allow confounding to be reduced or eliminated}.  Next we consider the mechanics how propensity scores are estimated, namely the various model and the model fitting procedures, and how the scores are then used to balance covariates and estimate ATE or ATT using various methods.  
+
+\subsection{Propensity score models}
+A model for the propensity score is a function from the space of covariates $X_i$ to $0<e_i=Pr(Z_i=1|X_i)<1$, or more traditionally to the log-odds $e_i$, namely:  
+\begin{equation}
+\log\frac{e_i}{1-e_i}=F(X_i)
+\end{equation}
+The most basic model for $F(X)$ is to assume linearity, $F(X)=\beta X$, which is then fit just as linear logistic regression models are\footnote{Notice that we are regressing the covariates $X_i$ on the log-odds of the probability of treatment $e_i$, \emph{not} on the outcomes}. However this simplest linear model has been shown in simulation and actual studies to not achieve the best balance between treatment and control covariates .  
+
+We note here that previous ATM research has also used linear logistic regression to model the probability of a GDP occurring, with a goal of fitting the most accurate GDP classifier to ultimately identify similar weather impacted airport days \cite{Grabbe:2014aa}.  However we emphasize that our goal is \emph{not} to derive the most accurate classifier but instead to use the probability of a GDP (or other TFMI) occurring as a balancing score for counterfactual estimation, and thus even if we employed linear logistic regression, the optimal model coefficients obtained using metrics for balance, would certainly be different that those using metrics for accurate classification.
+
+More robust alternatives to linear logistic models for propensity score include machine learning methods \cite{lee2010improving}, such as Generalized Boosted Models (GBM), which employ combinations of non-parametric piecewise-linear functions that adapt to the data and are thus more flexible than a linear model.  In addition GBM is implemented in open-source statistical software \cite{ridgeway2006gbm} and can thus be easily replicated by other researchers.  Furthermore, when GBM is used as the model for propensity score, fitting procedures which employ optimization to tune these piecewise linear functions to achieve best balance between treatment and control covariates are also readily implemented in open-source statistical software \cite{ridgeway2015toolkit}.  Furthermore there are various quantitative balance metrics that can be easily accessed to assess the quality of the resultant propensity score model \cite{ridgeway2015toolkit}. 
+
+\subsection{Confounding reduction methods}
+Once the propensity score model has been fit, one can use the resulting propensity scores for each subject, $e_i$, to balance the covariates $X_i$ between treatment and control groups and thereby reduce or eliminate confounding.  The four principal methods to reduce confounding using propensity scores are: matching, stratification, inverse probability of treatment weighting (IPTW), and covariate adjustment \cite{austin2011introduction}.  We will only summarize IPTW as it has been thoroughly implemented and tested in software \cite{ridgeway2015toolkit}, and has also been extended to multiple treatments \cite{mccaffrey2013tutorial}, which will eventually be required if we want to consider the effect of various TFMI options beyond just ``GDP or no-GDP."  Previous research on TFMI \cite{tfmireport} has shown there are likely many categories of TFMI that occur and which combine the various courses of actions available to decision makers, each with their own specific operational parameters. Thus extensions of propensity score modeling beyond binary treatments is a desirable property of IPTW.
+
+Recall that $Z_i$ is an indicator variable which denotes treatment status, i.e. $Z_i=1$ if the subject received treatment.  IPTW defines weights for each subject that capture the inverse probability the subject received treatment as follows \cite{austin2011introduction}:
+
+\begin{equation}
+w_i = \frac{Z_i}{e_i} + \frac{1-Z_i}{1-e_i}.
+\end{equation}
+The intuition behind the weights is the following: those subject in the control group ($Z_i=0$) whose propensity scores (probability of being selected for treatment) are relatively higher ($e_i$ is  larger) are ``weighted up" and thus their covariates are more greatly weighted when assessing balance after weighting.  Various balance measures after weighting with $w_i$ are possible using significance testing for differences of means, medians, variance, and Kolmogorov-Smirnov statistics\cite{ridgeway2015toolkit}.   
+
+These weights can also be used to adjust the outcome for each subject $Y_i$ and thereby simulate counterfactuals used to estimate ATT or ATE.  For example to estimate ATT, one weights the outcomes (e.g. mortality or airborne delay) for the treatment group with unity and for the control group with weights $w_i=e_i/(1-e_i)$.  Then the ATT treatment effect $E(Y_i(Z_i=1)-Y_i(Z_i=0)|Z_i=1)$ can be estimated by regressing on a single variable, the treatment indicator \cite{ridgeway2015toolkit}, or in the simplest model by arithmetic mean of the weighted counterfactual outcome.  
+
+
+\subsection{Advantages of propensity score over regression to reduce confounding}
+We summarize here the recognized advantages of propensity score techniques over regression methods \cite{mccaffrey2013tutorial}:
+\begin{list}
+\item \emph{dimensional reduction}: propensity scores summarize all covariates into a single score and act as an important dimensional reduction tool for evaluating treatment effects. Whereas regression methods require specifying a model that depends on all covariates (and various interactions).
+\item \emph{grounded in rigorous framework}: propensity score methods derive from a formal statistical model for causal inference, the potential outcomes framework, so that causal questions can be well-defined and explicitly specified and not conflated with the modeling approach as they are with traditional regression approaches
+\item {robust against model misspecifcation}: propensity score methods do not require modeling the mean for the outcome, which can help avoid bias from misspecification of that model 
+\item {avoid extrapolation}: propensity score methods avoid extrapolating beyond the observed data unlike parametric regression modeling for outcomes which extrapolate whenever the treatment and control groups are disparate on pretreatment variables
+\item {propensity score adjustments (e.g. IPTW weights) can be determined using only the pretreatment covariates and treatment assignments, eliminating the influence that estimated treatment effect can have on model specification of covariates.
+
+However we note that software for propensity score modeling \cite{ridgeway2015toolkit}, allows analysts to also assess ATT (or more generally causal effects) using traditional linear regression.  In our results we will present linear regression based ATT estimates for the effect of GDP on airborne delay.  
+
+\section{Application of propensity scores to ATM decision making}
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

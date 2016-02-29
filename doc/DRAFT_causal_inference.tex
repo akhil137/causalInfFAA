@@ -1,0 +1,130 @@
+%\documentclass[11pt]{amsart}
+\documentclass[11pt]{scrartcl}
+\usepackage[top=1.0in, bottom=1.0in, left=1.0in, right=1.0in]{geometry}
+\geometry{letterpaper}
+\usepackage{graphicx}
+\usepackage{amssymb}
+\usepackage{epstopdf}
+\usepackage{listings}
+\usepackage{color}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\DeclareGraphicsRule{.tif}{png}{.png}{`convert #1 `dirname #1`/`basename #1 .tif`.png}
+%\title{Causal Inference}
+%\author{Akhil Shah, Kenneth Kuhn, Chris Skeels}
+%\date{RAND Corporation}
+\begin{document}
+%\maketitle
+
+
+\section{Motivation for Causal Inference}
+Our research thus far has focused on identifying similar days within the NAS based on weather and traffic both at the airspace and airport levels.  Subsequently, we will use this methodology of identifying similar days to build a decision support tool \footnote{Other efforts to create such decision making aids include \cite{pyrgiotis2011public}} which will aid controllers and other stakeholders in selecting and evaluating TFMI that may be necessary for a given forecast of weather and traffic.  One aspect of any decision tool is to enable 'what-if' analysis to determine the impact on safety, efficiency, or other ATM metrics for a potential TMFI.  Such analyses require statistically sound methods for estimating the impact of a potential TFMI for a given weather and traffic forecast.  Although the forecast (weather and traffic) for a given time period may be similar to an observed time period in the historical data, there may be differences, and those differences need to be accounted for when statistically estimating the impact of a potential TFMI under consideration.  Furthermore it may be the case that the most similar day(s) to a given forecast did not have any TFMI or one that is different than the TFMI under evaluation.   Thus to estimate the impact of a potential TFMI from observed impacts often requires modeling either due to differences in weather and traffic features of the observed versus forecasted time periods, and additionally due to possible differences in the TFMI features (category or implementation details, e.g. GDP duration). Examples of questions that would require modeling include
+\begin{itemize}
+\item  How much of a decrease in Airborne Delay is caused by administering a GDP for the upcoming 6-hour forecast at EWR?
+\item How would other TFMI (Ground Stop, Reroutes, etc.) affect ATMS metrics (resiliency, efficiency, saftety)?
+\end{itemize}
+
+One approach to predictive analysis using observed weather, traffic, and impact (i.e. delay) data is to use a dynamic systems modeling approach, using either analytic or discrete-event simulations.  There are various modeling tools in this category, including those developed by NASA, such as ACES\footnote{Further information can be found at \url{http://www.aviationsystemsdivision.arc.nasa.gov/research/modeling/aces.shtml}} and FACET \cite{facet}.  Event-driven simulators, such as DPAT \footnote{Examples of other NAS capacity modeling tools can be found at: \url{http://onlinepubs.trb.org/Onlinepubs/circulars/ec042/04_Donohue.pdf}} \cite{wieland1997limits,schaefer2001flight}, model delay and delay propagation, while analytic alternatives employ queuing theoretic approximations \cite{kim2009air,sengupta2010computational} to derive such results. Other modeling tools in this category such as SLDAST \cite{bardina2011nasa} are used to study system-level concepts, such as  NextGen, and employ other tools (i.e. ACES) in their execution.   
+
+Alternatively one can use predictive analyses that don't directly model the dynamics of weather and traffic in the NAS through analytic or discrete-event approaches, but rather through statistical techniques for producing \emph{counterfactual} scenarios unobserved in the historical data of recorded TFMI and their impacts on various ATMS metrics, such as ground and airborne delay.  These counterfactual scenarios can then be used to estimate the impact of potential TFMI given weather and traffic forecasts and thus aid 'what-if' analysis required of decision makers.  For example\cite{kim2013} use a statistical simulation technique (``quantile equivalence") to generate counterfactual scenarios of demand and throughput at LGA, EWR, and JFK, and consequently predict delay at these airports.  This method does account for a single, but relevant, weather feature using an emprical non-parametric procedure to statistically simulate counterfactual scenarios by mixing \emph{observed} throughput and demand in various time periods \emph{for a given} (i.e. conditioned on) level of visibility\footnote{In a categorical fashion as either VMC or IMC}).  
+
+
+Another successful approach to generate counterfactual scenarios that has been used in various other domains is causal inference, which comprises of several statistical methods, including propensity scores \cite{austin2011introduction}, which we will apply to counterfactual estimation for TFMI impact.  Other domains that have employed causal inference methods include efficacy of on-line advertising \cite{bottou2013counterfactual}, detecting net-neutrality violations by internet service providers \cite{tariq2009detecting}, and several examples in public health \cite{victora2004evidence}.    
+
+
+
+
+\section{Description of Causal Inference Methodology}
+Consider the following the question relevant for ATMS decision-makers: \emph{How much of a decrease in airborne delay is caused by implementing a GDP for the upcoming 6-hour forecast at EWR}?   
+
+A formal mathematical framework for causal inference, the Rubin potential outcomes model \cite{rubin1974estimating}, can be used to answer such questions.  The standard terminology used in the formal framework borrows from the language of clinical trials, differentiating each observed patient (record) as being assigned to either a treatment or control group, with each group having its set of measured baseline characteristics (relevant covariates), and consequently estimating the post-treatment outcome. The challenge is that the treatment and control groups may have significantly different baseline characteristics that act as confounding variables, correlated with both group assignment and outcome.  For example, to estimate the impact of smoking cessation counseling on the mortality on heart-attack survivors, age is an obvious confounding factor (there are several others) that would influence both a patients inclination to receive counseling as well as their mortality \cite{austin2011tutorial}.  Thus to produce unbiased estimates of post-treatment outcomes caused by the counseling, requires a statistically sound procedure to eliminate confounding.  One such method is propensity scores \cite{austin2011introduction}, which use either logistic regression or machine learning techniques (e.g. bagging, boosting, random forests, or neural networks) to model the probability of being assigned to the treatment group\footnote{The variable $Z$ is used to indicate assignment to a treatment group $Z=1$ or control group $Z=0$} given the measured baseline covariates.  The propensity score has a statistical ``balancing" property\footnote{
+The balancing property informally states that records in both treatment and control groups with the same propensity score are drawn from the same distribution of baseline covariates \cite{austin2011introduction}.} that can be used to weight an observed outcome and produce a counterfactual outcome, which can subsequently be used to produce unbiased estimates of treatment impacts \cite{austin2011introduction}.  There are also extensions of the propensity score method to multiple treatments \cite{mccaffrey2013tutorial}, which can generate counterfactuals beyond just the two-possibility paradigm of treatment and control groups.  
+
+Our application of the potential outcomes framework using propensity scores to estimate the impact of potential TFMI uses the following analogy: each record is a time period at a given airport (could be a day or hour); measured baseline characteristics are historical forecasts of weather (relevant features from TAF) and traffic (hourly arrival data from ASPM); treatment assignment is the occurrence of a TFMI in the time period (such as GDP); and measured outcomes include ATMS metrics (such as airborne delay, also recorded in ASPM).  
+
+After preprocessing and synthesizing the various data sources above, we will estimate the propensity scores $e_i \equiv Pr(Z_i=1|\mathbf{X}_i)$ for each time period $i$, using a Generalized Boosted Model (GBM) \cite{ridgeway2015toolkit} based on weather and traffic covariates for each time period $\mathbf{X}_i$.  Note that the process of generating a propensity score is very similar to supervised learning\footnote{More precisely, if the supervised learning method employed a soft-decision threshold, then the propensity score would be produced as an intermediate step by the classifier when estimating whether a given record should be assigned a label of GDP or ``no-GDP" based on its weather and traffic feature vector $\mathbf{X}_i$.} The propensity scores can be used to generate weights $w_i \equiv 1/e_i$ that generate counterfactual airborne delays for a given forecast of weather and traffic, a procedure generally called Inverse Probability of Treatment Weighting (IPTW) \cite{austin2011introduction}.  
+
+The propensity score procedure of generating counterfactual scenarios is related to our proposed methods of generating similar days.  Our decision-aid will first generate clusters or sets of similar days to a given forecast, as illustrate by the schematic in the fig. \ref{cluster} below.  Within that group of similar days we will employ IPTW to generate an unbiased estimate of airborne delay for a potential TFMI (GDP in this case).  We also envision extending our methodology to allow the decision-aid to analyze multiple treatments or TFMI options (GDP vs. GS vs. Reroutes) by adopting the techniques presented in \cite{mccaffrey2013tutorial}.  
+
+
+
+\par\noindent
+\newpage\noindent
+\begin{figure}[h]
+\begin{center}
+\includegraphics[scale=0.65]{clusters.png}
+\caption{Schematic illustration of our previous method to identify similar days to a given forecast, which we will consequently use to perform 'what-if' analysis and estimate potential TFMI impacts using propensity scores as discussed in the text.}
+\label{cluster}
+\end{center}
+\end{figure}
+
+\section{Notes from twang}
+twang can produce ATT and ATE estimates\footnote{specified by ps.estimand = "ATT" for example}.  It uses GBM (generalized boosted regression model) to estimate propensity scores, which are used to weight covariates (confounding variables) and outcomes.  The main function is \emph{ps}, which describes the treatment indicator variable (1/0) and confounding covariates (\textbf{no outcomes included yet}).  
+
+The GBM model stops when it minimizes the difference between treated and comparison (control) covariate feature distributions (e.g. age difference between treated and comparison) using the calculated propensity weights (weights are a function of score as described in eqn 3 of \cite{ridgeway2015toolkit}).  Since there are multiple covariates we can computes the ES or KS statistic for each and either take the max or min across the covariates.  
+
+The effect size (ES) is also known as absolute standardized mean difference (or abs std. bias).  Null hypothesis in this case would be there is no difference in the feature distribution between treatment and control group, e.g. the GBM has achieved \emph{balance}.  
+
+Balance tables show how well the resulting weights (odds ratio of the prop score as shown in eqn 3) succeeded in manipulating control group so its covariates match those of unweighted treatment group\footnote{we weight control in ATT, but weight both in case of ATE}.  
+
+Note in the balance tables:
+-for covariates with tx and ct means that are similar, the ES or KS p-value are large (than usual 5\% significance).  Which implies we cannot reject null hyp: the null hyp is that tx and ct cov drawn from same distribution.  
+-In the unw table most p-val are small, implying we should reject null hypothesis.
+-In the weighted tables (either es.mean or ks.max),note that all p-vals are large, meaning cannot reject null hypothesis, and likely that each cov distribution is same for treated and control.
+
+
+\subsection{ATE vs ATT}
+ATE = diff in outcome if all given treatment vs all given control 
+
+Need to est 2 cf:
+1. treatment cf for control
+2. control cf for treated
+
+ATT = diff in outcomes for treated, if treated given control
+
+Need to est 1cf:
+1. control cf for treated
+
+\subsection{ESS}
+The effective sample size is number of observations from a simple random sample that ...
+
+Note ESS is expected to be smaller with other approaches such as matching or stratification.  
+
+Propensity score overlap has to be large between treatment and control groups to use stratification, but not so with weights.
+
+\subsection{Analysis of outcomes}
+Need to use separate package, called \emph{survey}, which uses the propensity score based weights to create a design.  That design can be used in a GLM (generalized linear model) to regress outcome on treatment indicator:
+svyglm(outcome ~ treatment, design=svydesign(weights=ps\$weights))
+ 
+The above will provide estimates of the model: $Y=\beta_0+\beta_1 T$, where $T$ is the treatment indicator variable, thus $\beta_1$ is the incremental difference in outcomes for those in the treatment group\footnote{assuming an ATT analysis.}.  
+
+The standard error of $\beta_1$ is also provided, in addition to its corresponding t-value.  If the t-value is large, then we cannot reject the null hypothesis, i.e. we cannot reject the possibility that $\beta_1$ could be (on average) zero\footnote{equivalent to saying that $\beta_1$ is not stat. significant}.
+
+\subsubsection{Application to TMI - GDP as a treatment}
+If we performed the analysis of outcomes as above (ATT), we could determine incremental change (hopefully decrease) in airborne delay ($Y$) on days (or hours) that did have GDP\footnote{$T=1$ indicates GDP applied}.    
+
+The resulting $\beta_1$ would be the estimate of the average incremental airborne delay (negative would mean reduction) due to the application of GDP (averaged over the records which had GDP applied, e.g. an ATT analysis).  
+
+
+\subsection{Data sources}
+ASPM data provides average airborne delay for a given hour and airport, where Average Airborne Delay is defined as the difference between Actual Airborne Time and the flight plan Estimated Time Enroute (Filed ETE), in minutes.\footnote{\url{http://aspmhelp.faa.gov/index.php/ASPM_Airport_Analysis:_Definitions_of_Variables}}
+
+\subsection{Details of twang methods}
+Weights account for differences in distribution of treatment and control groups.  For example, if $f(age=65, sex=F|t=1)=0.1$ and $f(age=65, sex=F|t=0)=0.05$, we would need to use $w=2$ for each case in the control group with those features.  
+
+Balance is defined as $f(X|t=1) = w(X) f(X|t=0)$.  Note $X$ is a feature vector (dimension equal to number of covariates).  
+
+Thus note, that the weights are different for each record, or equivalently, the weights are a function of the covariates, $w=w(X)$, and thus for each $X_i$, we will have a different $w_i$.  
+
+Weights are determined by prop score, due to the following argument:  solve above eqn and use Bayes.  Thus $w(X) = K P(t=1|X)/(1-P(t=1|X))$.  Namely the weight is proportional to odds-ratio of the prop score.
+
+\emph{Intuition}: The prop score for a record in the control group will be high if that record has features similar to the treatment group, and will be low otherwise.  Thus the weights are higher for control records that look like treatment records in feature space.  We can thus produce estimates of counterfactual outcomes for the treatment records by using the re-weighted outcomes from the control records (we up-weight those control records that have high prop score and down-weight control records that have low prop score).  
+
+\subsubsection{Estimating prop score}
+The prop score is $P(t=1|X)$.  To estimate it via linear logistic regression we use $log-odds P(t=1|X) = \beta X$ via ML.  But if we have many covariates (large dimensional model) or the covariates are correlated (nonlinear models).  Thus we should use LASSO, penalized ML, which effectively zeros out many of the terms (most $\beta$ set to zero) but produces a model which takes into account correlations between covariates.  
+
+twang uses GBM to estimate prop score via LASSO.  GBM employs boosting to efficiently (computationally) solve the LASSO problem (penalized ML).
+ 
+\bibliographystyle{abbrv}
+\bibliography{gdp_causal}
+\end{document} 
