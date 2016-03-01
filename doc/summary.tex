@@ -23,27 +23,29 @@
 \ \\
 {\bf \normalsize RAND Corporation}\\
 \section*{Introduction}
+The Federal Aviation Administration (FAA) is the governmental agency responsible for policy and oversight of air transportation in the United States.  The daily management of air transportation is lead by the Air Traffic Control System Command Center (ATCSCC) which has ``final approval authority for all national traffic management initiatives."  The ATCSCC implements its authority by publishing timely Air Traffic Flow Management Initiatives (ATFMI), regularly consulting with Airline Operation Centers (AOC) using a process known as Collaborative Decision Making (CDM).   
 
-\emph{from \cite{projreport}}
-The Federal Aviation Administration (FAA) is the governmental agency which sets policies for the management of air transportation in the United States.  Day-to-Day management of air transportation is lead by the Air Traffic Control System Command Center (ATCSCC) which has ``final approval authority for all national traffic management initiatives.?  The ATCSCC implements its authority by publishing timely Air Traffic Flow Management Initiatives (ATFMI), regularly consulting with Airline Operation Centers (AOC) using a process known as Collaborative Decision Making (CDM).   
+Both the ATCSCS and AOCs regularly implement Air Traffic Flow Management Initiatives (ATFMI) such as Ground Delay Programs (GDP), purposefully delaying flights on the ground at the departure airport, or canceling and rerouting flights. These initiatives increase the safety and efficiency of the nation's air transportation system (ATS), for example by replacing airborne delay with ground delay, in the cased of GDP, and are necessary during inclement weather and in other situations where demand exceeds system resources, such as airport arrival capacity.  The complexity of optimally allocating constrained resources have motivated researchers to develop decision making aids, for example \cite{pyrgiotis2011public}, that can assist operators to evaluate tradeoffs of available ATFMI.
+
+One aspect of any decision aid is to enable analysis of alternative courses of action, such that operators may evaluate the tradeoffs and potential impacts various ATFMI will have on system metrics.  Although analysis of historical records of ATFMI can in principal demonstrate the relative merits of courses of action and their affect on the observed outcomes, there is a fundamental challenge of accurately accounting for the distinct conditions, such as weather and demand, experienced during previous time periods, and the degree to which differences in outcomes such as delays, the number and severity of safety incidents, etc. are also attributable to these \emph{confounding} conditions.  The general problem of eliminating confounding to accurately attribute the impact any decision or initiative has on observed outcomes is well known and has been studied by statisticians and researchers in various domains \cite{rubin1974estimating}. 
+
+In this report we present a novel application of causal inference, and specifically propensity scores, to reduce or eliminate confounding of differing weather and demand conditions so that a decision aid can accurately attribute the impact of potential ATFMI on outcomes such as safety and efficiency.  More specifically we will apply the confounding reduction methodology of propensity score weighting to statistically estimate counterfactuals for observed ATFMI at airports in the New York metro, and thereby attribute the impact of GDP decisions, one of the available ATFMI, on airborne holding delay, one of the outcomes describing system safety.  We will also discuss how this methodology can be further generalized to consider combinations of various TFMI which are often observed simultaneously \cite{tfmiCluster} at multiple airports.   
+
+\section*{Related research}
+Identification of days with similar weather, demand, and ATFMI plans is another method which may assist in reducing confounding to reliably aid decision makers evaluate potential courses of action \cite{projreport}.  The causal inference methods we present in this report can complement clustering and similarity techniques by quantifying the degree of confounding that remains, and enabling the estimation of counterfactuals.   
+
+Another approach to analysis of alternatives is to use a dynamic systems modeling approach, employing either analytic or discrete-event simulations.  There are various modeling tools in this category, including those developed by NASA, such as ACES\footnote{Further information can be found at \url{http://www.aviationsystemsdivision.arc.nasa.gov/research/modeling/aces.shtml}} and FACET \cite{facet}.  Event-driven simulators, such as DPAT \footnote{Examples of other NAS capacity modeling tools can be found at: \url{http://onlinepubs.trb.org/Onlinepubs/circulars/ec042/04_Donohue.pdf}} \cite{wieland1997limits,schaefer2001flight}, model delay and delay propagation, while analytic alternatives employ queuing theoretic approximations \cite{kim2009air,sengupta2010computational} to derive such results. Other modeling tools in this category such as SLDAST \cite{bardina2011nasa} are used to study system-level concepts, such as  NextGen, and employ other tools (i.e. ACES) in their execution.   
+
+Alternatively one can use techniques that don't directly model the dynamics of weather and traffic in the NAS through analytic or discrete-event approaches, but rather through statistical techniques for producing \emph{counterfactual} scenarios unobserved in the historical data of recorded TFMI and their impacts on various ATMS metrics, such as ground and airborne delay.  These counterfactual scenarios can then be used to estimate the impact of potential TFMI given weather and traffic forecasts and thus aid 'what-if' analysis required of decision makers.  For example\cite{kim2013} use a statistical simulation technique (``quantile equivalence") to generate counterfactual scenarios of demand and throughput at LGA, EWR, and JFK, and consequently predict delay at these airports.  This method does account for a single, but relevant, weather feature using an emprical non-parametric procedure to statistically simulate counterfactual scenarios by mixing \emph{observed} throughput and demand in various time periods \emph{for a given} (i.e. conditioned on) level of visibility\footnote{In a categorical fashion as either VMC or IMC}).  
 
 
-Air Traffic Control System Command Center and at airline operations centers regularly implement Air Traffic Flow Management Initiatives (ATFMIs) such as Ground Delay Programs (GDPs) purposefully delaying, canceling, and rerouting flights. These initiatives increase the safety and efficiency of the nation?s air transportation system, for example by replacing airborne delay with ground delay, and are necessary during inclement weather and in other situations where demand for system resources exceeds capacity.
-
-\subsection*{In statistical parlance, our datasets would comprise an 'observational study'}
-
-Analysis of historical ATFMIs can in principal demonstrate the relative merits of courses of action but must account for the distinct conditions faced during planning and operations.
-
-As one study reported, ?clustering techniques appear to be promising methods for identifying the major causes of Ground Delay Programs? ([5]).
-
-\emph{from airspace report}
-It is currently very difficult to compare, in any rigorous sense, how TFMIs or, more generally, the nation?s air traffic control system performs during different time periods. The key problem is uncertainty regarding the degree to which differences in delays, the number and severity of safety incidents, etc. are or are not attributable to the different conditions faced during distinct time periods. Transparent, reproducible analyses with easy to explore results identifying sets of similar days from the perspective of TFMI planning and/or operations would help.
+In this report we will examine another successful approach to generate counterfactual scenarios to eliminate confounding and accurately attribute the impact of decisions on outcomes that has been used in various other domains such as health \cite{victora2004evidence} and education\footnote{There are numerous applications of causal inference to health and education studies and more recently to other domains, such as the application of causal inference to estimate the efficacy of on-line advertising \cite{bottou2013counterfactual} or to detect net-neutrality violations by internet service providers \cite{tariq2009detecting}}, namely Causal Inference \cite{austin2011introduction}.  Causal Inference actually comprises several statistical methods, including propensity scores \cite{austin2011tutorial}, which we will specifically employ for counterfactual estimation to evaluate TFMI impact on system outcomes in the presence of confounding factors such as weather and demand.  
 
 \subsection*{why prop score rather than regression based adjustment techniques}
 
 Regression-based covariate adjustment techniques correct for imbalances between groups on pretreatment covariates by controlling for them in regression models for the outcomes.  As explained in  \cite{mccaffrey2013tutorial}, there are several reasons why propensity score techniques are advantageous over such regression-based techniques
 
-
+In statistical parlance, our datasets would comprise an \emph{observational study}.
 
 
 
@@ -249,7 +251,7 @@ Observations & 5,135 \\
   & (0.183) \\ 
   & \\ 
 \hline \\[-1.8ex] 
-Observations & 5,135 \\ 
+No. of Observations & 5,135 \\ 
 %Log Likelihood & $-$20,603.040 \\ 
 %Akaike Inf. Crit. & 41,210.090 \\ 
 \hline 
@@ -257,6 +259,57 @@ Observations & 5,135 \\
 \textit{Note:}  & \multicolumn{1}{r}{$^{*}$p$<$0.1; $^{**}$p$<$0.05; $^{***}$p$<$0.01} \\ 
 \end{tabular} 
 \end{table} 
+
+
+%EWR
+% latex table generated in R 3.1.0 by xtable 1.7-4 package
+% Mon Feb 29 12:32:52 2016
+\begin{table}[ht]
+\centering
+\begin{tabular}{lrrr}
+  \hline
+ & E(Y1$|$t=1) & E(Y0$|$t=0) & p-value \\ 
+  \hline
+cross\_EWR\_1 & 9.91 & 8.00 & 0.00 \\ 
+  vis\_EWR\_1 & 7.76 & 9.38 & -0.00 \\ 
+  snow\_EWR\_1:FALSE & 0.95 & 0.98 & 0.00 \\ 
+  snow\_EWR\_1:TRUE & 0.05 & 0.02 & 0.00 \\ 
+  TS\_EWR\_1:FALSE & 0.99 & 1.00 & 0.00 \\ 
+  TS\_EWR\_1:TRUE & 0.01 & 0.00 & 0.00 \\ 
+  rain\_EWR\_1:FALSE & 0.77 & 0.94 & 0.00 \\ 
+  rain\_EWR\_1:TRUE & 0.23 & 0.06 & 0.00 \\ 
+  A\_EWR & 34.62 & 32.26 & -0.00 \\ 
+   \hline
+\end{tabular}
+\caption{Imbalance of the treatment and comparison groups for various weather and traffic (arrivals count) features (covariates)} 
+\label{tab:imbalance}
+\end{table}
+
+% latex table generated in R 3.1.0 by xtable 1.7-4 package
+% Mon Feb 29 12:39:25 2016
+\begin{table}[ht]
+\centering
+\begin{tabular}{lrrrr}
+  \hline
+ & E(Y1$|$t=1) & E(Y0$|$t=1) & p-value & E(Y0$|$t=0) \\ 
+  \hline
+cross\_EWR\_1 & 9.91 & 9.38 & 0.08 & 8.00 \\ 
+  vis\_EWR\_1 & 7.76 & 8.14 & 0.04 & 9.38 \\ 
+  snow\_EWR\_1:FALSE & 0.95 & 0.95 & 0.99 & 0.98 \\ 
+  snow\_EWR\_1:TRUE & 0.05 & 0.05 & 0.99 & 0.02 \\ 
+  TS\_EWR\_1:FALSE & 0.99 & 1.00 & 0.00 & 1.00 \\ 
+  TS\_EWR\_1:TRUE & 0.01 & 0.00 & 0.00 & 0.00 \\ 
+  rain\_EWR\_1:FALSE & 0.77 & 0.82 & 0.01 & 0.94 \\ 
+  rain\_EWR\_1:TRUE & 0.23 & 0.18 & 0.01 & 0.06 \\ 
+  A\_EWR & 34.62 & 34.40 & 0.85 & 32.26 \\ 
+   \hline
+\end{tabular}
+\caption{Simulated counterfactual E(Y0|t=1) and assessment of balance achieved by propensity score weighting the treatment and comparison groups using IPTW} 
+\label{tab:balance}
+\end{table}
+> 
+
+
 
 \bibliographystyle{plain}
 \bibliography{gdp_causal}
