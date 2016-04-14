@@ -31,7 +31,8 @@ metar_aspm<-metar_aspm[keeps]
 #-----------------------------------------------------#
 #--------DETERMINE GDP START/END TIMES----------------#
 #-----------------------------------------------------#
-
+#Note that times below coded with POSIXct (since unix epoch time)
+#which seems to do time converstions correctly
 #helper function
 getGDP<-function(filename,apZone){
 	dat<-read.csv(filename)
@@ -48,7 +49,8 @@ getGDP<-function(filename,apZone){
 	"Delay.Asgmt.Mode",
 	"RootAdvisoryDate.UTC",
 	"RootAdvisoryNumber",
-	"Is.RootAdvisory"
+	"Is.RootAdvisory",
+	"Advisory.Text"
 	)
 
 	#subset on these columns
@@ -70,6 +72,7 @@ getGDP<-function(filename,apZone){
 	gdp.end.time<-as.POSIXct(dat.gdp.ap$Derived.EndDate.Time.UTC,tz="UTC")
 	gdp.RootAdvisoryNumber<-dat.gdp.ap$RootAdvisoryNumber
 	gdp.RootAdvisory<-factor(dat.gdp.ap$Is.RootAdvisory,levels=c("No","Yes"),labels=c(0,1))
+	gdp.Advisory.Text<-dat.gdp.ap$Advisory.Text
 	#output a list of these objects
 	list("advisoryDate"=gdp.adv.date,
 		"sendTime"=gdp.send.time,
@@ -77,7 +80,8 @@ getGDP<-function(filename,apZone){
 		"endTime"=gdp.end.time,
 		"status"=gdp.status,
 		"advNum"=gdp.RootAdvisoryNumber,
-		"rootAdv"=gdp.RootAdvisory
+		"rootAdv"=gdp.RootAdvisory,
+		"reason"=gdp.Advisory.Text
 		)
 }
 

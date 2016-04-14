@@ -6,7 +6,8 @@ library(twang)
 #file dir: /Users/ashah/NoBackup/code/nasa/src/causalInfFAA
 twang_taf.jfk<-read.csv("twang_taf_jfk_noMissing.csv")
 ps.jfk<-ps(status_JFK ~ cross_JFK_1 + vis_JFK_1 + snow_JFK_1 + TS_JFK_1 + rain_JFK_1 + A_JFK,data=twang_taf.jfk,estimand="ATT")
-
+ps.ewr<-ps(status_EWR ~ cross_EWR_1 + vis_EWR_1 + snow_EWR_1 + TS_EWR_1 + rain_EWR_1 + A_EWR,data=twang_taf.ewr,estimand="ATT")
+ps.lga<-ps(status_LGA ~ cross_LGAa_1 + cross_LGAb_1 + vis_LGA_1 + snow_LGA_1 + TS_LGA_1 + rain_LGA_1 + A_LGA,data=twang_taf.lga,estimand="ATT")
 #gbm iter plot
 plot(ps.jfk,plots=1)
 
@@ -46,7 +47,7 @@ pretty.tab <- bal.jfk$ks.mean.ATT[,c("tx.mn","ct.mn","ks.pval")]
 pretty.tab <- cbind(pretty.tab, bal.jfk$unw[,"ct.mn"])
 names(pretty.tab) <- c("E(Y1|t=1)","E(Y0|t=1)","p-value","E(Y0|t=0)")
 xtable(pretty.tab,
-caption = "Simulated counterfactual E(Y0|t=1) and assesment of balance achieved byt propensity score weighting the treatment and comparison groups using IPTW",
+caption = "Simulated counterfactual E(Y0|t=1) and assessment of balance achieved by propensity score weighting the treatment and comparison groups using IPTW",
 label = "tab:balance",
 digits = c(0, 2, 2, 2, 2),
 align=c("l","r","r","r","r"))
@@ -77,3 +78,18 @@ glm2<-svyglm(AirDelay_JFK ~ status_JFK + cross_JFK_1 + vis_JFK_1 + snow_JFK_1 + 
 
 #std linear regression
 glm4<-lm(AirDelay_JFK ~ status_JFK + cross_JFK_1 + vis_JFK_1 + snow_JFK_1 + TS_JFK_1 + rain_JFK_1 + A_JFK,data=twang_taf.jfk)
+
+
+
+#do it for ewr
+twang_taf.ewr$w<-get.weights(ps.ewr,stop.method="es.mean")
+design.ewr<-svydesign(ids=~1, weights=~w, data=twang_taf.ewr)
+glm1.ewr<-svyglm(AirDelay_EWR ~ status_EWR, design=design.ewr)
+glm4.ewr<-lm(AirDelay_EWR ~ status_EWR + cross_EWR_1 + vis_EWR_1 + snow_EWR_1 + TS_EWR_1 + rain_EWR_1 + A_EWR,data=twang_taf.ewr)
+
+
+#and for lga
+twang_taf.lga$w<-get.weights(ps.lga,stop.method="es.mean")
+design.lga<-svydesign(ids=~1, weights=~w, data=twang_taf.lga)
+glm1.lga<-svyglm(AirDelay_LGA ~ status_LGA, design=design.lga)
+glm4.lga<-lm(AirDelay_LGA ~ status_LGA + cross_LGAa_1 + cross_LGAb_1+ vis_LGA_1 + snow_LGA_1 + TS_LGA_1 + rain_LGA_1 + A_LGA,data=twang_taf.lga)
