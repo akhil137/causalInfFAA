@@ -1,6 +1,6 @@
 setwd("~/NoBackup/code/nasa/src/causalInfFAA/data")
 
-ap<-"LGA"
+ap<-"JFK"
 aspmFile<-paste(ap,"_aspm.csv",sep="")
 aspm<-read.csv(aspmFile)
 aspm2014<-read.csv(paste(ap,"_aspm_2014.csv",sep=""))

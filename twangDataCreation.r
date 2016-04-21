@@ -9,6 +9,8 @@ metarFile<-paste(ap,"_metar.csv",sep="")
 aspmFile<-paste(ap,"_aspm.csv",sep="")
 metar<-read.csv(metarFile)
 aspm<-read.csv(aspmFile)
+aspm2014<-read.csv(paste(ap,"_aspm_2014.csv",sep=""))
+aspm<-rbind(aspm,aspm2014)
 #create a time-stamp col combining date and hour
 metar$timestamp<-strptime(paste(metar$date,metar$Hour),"%Y-%m-%d %H",tz="America/New_York")
 #drop duplicated hour metar obs

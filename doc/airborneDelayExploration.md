@@ -113,14 +113,34 @@ gdp.backdated<-gdponlyroot[gdponlyroot$startTime-gdponlyroot$sendTime<0,]
 
 
 
-> extractor<-function(x){s<-gdp.backdated$reason[x]; regmatches(s,gregexpr("(?<=CONDITION\\:)[^\\|]+",s,perl=TRUE))}
-> reasons<-unlist(lapply(seq(1:length(gdp.backdated$reason)),extractor))
-> gdp.backdated$reasonCat<-unlist(lapply(seq(1,length(reasons)),function(x){strsplit(reasons[x],"/")[[1]][1]}))
-> gdp.backdated$reasonsDetail<-reasons.detail<-unlist(lapply(seq(1,length(reasons)),function(x){strsplit(reasons[x],"/")[[1]][2]}))
+extractor<-function(x){s<-gdp.backdated$reason[x]; regmatches(s,gregexpr("(?<=CONDITION\\:)[^\\|]+",s,perl=TRUE))}
+
+reasons<-unlist(lapply(seq(1:length(gdp.backdated$reason)),extractor)) 
+
+gdp.backdated$reasonCat<-unlist(lapply(seq(1,length(reasons)),function(x){strsplit(reasons[x],"/")[[1]][1]}))
+
+gdp.backdated$reasonsDetail<-reasons.detail<-unlist(lapply(seq(1,length(reasons)),function(x){strsplit(reasons[x],"/")[[1]][2]}))
 
 gdp.bd<-gdp.backdated[,-8]
 
 *round to nearest hour then convert to nY time*
-gdp.bd$startHour<-round(gdp.bd$startTime,"hour") *makes it POSIXlt, no good 
-for tz conversion*
+gdp.bd$startHour<-round(gdp.bd$startTime,"hour") 
+*after formatting, the result is a character*
 gdp.bd$NYstartHour<-format(as.POSIXct(gdp.bd$startHour),tz="America/New_York")
+
+*to extract aspm index compare correct tz*
+aspm_time_idx<-which(aspm$timestamp==as.POSIXlt(gdp.bd$NYstartHour[1],tz="America/New_York"))
+
+*note it works for the first startHour*
+> gdp.bd$NYstartHour[1]
+[1] "2010-01-08 16:00:00"
+> aspm$timestamp[160]
+[1] "2010-01-08 16:00:00 EST"
+
+*--------------*
+*--------------*
+
+
+
+
+

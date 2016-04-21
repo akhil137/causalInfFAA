@@ -1,6 +1,6 @@
 #pick an airport in ZNY; usually {JFK,LGA, EWR})
 #NOTE: we use NY timezones explicitly in conversions below!!!
-ap<-"LGA"
+ap<-"JFK"
 
 #-----------------------------------------------------#
 #--------DETERMINE GDP START/END TIMES----------------#
@@ -180,3 +180,6 @@ df3$timestamp<-as.POSIXct(df3$timestamp,tz="UTC")
 df3$timestamp<-format(df3$timestamp,tz="America/New_York")
 #let's create another factor level which will indicate "NO GDP"
 df3$status<-factor(df3$status,levels=c(0,1))
+
+feature_dir = "/Users/ashah/NoBackup/code/nasa/src/causalInfFAA/data/"
+save(df3,file=paste(feature_dir,"JFK_GDPStatus_timestamped_data.Rdata",sep=""))
