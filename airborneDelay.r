@@ -11,6 +11,7 @@ aspm<-aspm[order(as.POSIXct(aspm$timestamp)),]
 keeps=c("timestamp","A","AirDelay")
 aspm<-aspm[keeps]
 
+
 #verfiy time ordering of aspm graphically
 #library(ggplot2)
 #ggplot(aspm,aes(seq(1,nrow(aspm)),timestamp)) + geom_line()
@@ -40,6 +41,7 @@ gdp.ewr<-do.call(rbind,gdp.ewr.list)
 
 gdponly<-gdp.ewr[gdp.ewr$status=="GDP",]
 
+
 #extract reasons for issuing GDP "impacting condition" category and detail
 #not right way to do it:
 #extractor<-function(x){s<-gdponly$reason[x]; regmatches(s,gregexpr("(?<=CONDITION\\:).*(?=\\|C{1})",s,perl=TRUE))}
@@ -53,13 +55,13 @@ reasons.all.cat<-unlist(lapply(seq(1,length(reasons.all)),function(x){strsplit(r
 reasons.all.detail<-unlist(lapply(seq(1,length(reasons.all)),function(x){strsplit(reasons.all[x],"/")[[1]][2]}))
 
 
-#lets select only root adv*
+
 gdponlyroot<-gdponly[gdponly$rootAdv==1,]
 
 
 #some histogram plotting
 library(ggplot2)
-gdponlyroot$backdated<-as.factor(gdponlyroot$backdated
+gdponlyroot$backdated<-as.factor(gdponlyroot$startTime-gdponlyroot$sendTime<0)
 rootTimeliness<-ggplot(gdponlyroot,aes(as.numeric(startTime-sendTime)))
 
 rootTimeliness + xlim(c(-500,1000)) + geom_histogram(binwidth=100) 
@@ -84,11 +86,13 @@ gdp.bd<-gdp.backdated[,-8]
 gdp.bd$startHour<-round(gdp.bd$startTime,"hour") 
 #after formatting, the result is a character*
 gdp.bd$NYstartHour<-format(as.POSIXct(gdp.bd$startHour),tz="America/New_York")
-
+save(gdp.bd,file="~/NoBackup/code/nasa/src/causalInfFAA/data/JFKGDPBackDatedOnlyEvents")
 #to extract aspm index compare correct tz*
 #we're going to cycle thru each gdp.bd start hour in NY time zone
 #and find the the aspm index which corresponds to it by matchgin the 
 #aspm timestamp
+load("~/NoBackup/code/nasa/src/causalInfFAA/data/JFK_ASPMAirborneDelay_timestamped_data.Rdata")
+aspm$AirDelay<-aspm$AirDelay_JFK
 aspm_time_idx<-unlist(lapply(seq(1, length(gdp.bd$NYstartHour)),function(x){
 	which(aspm$timestamp==as.POSIXlt(gdp.bd$NYstartHour[x],tz="America/New_York"))}))
 #note it works for the first startHour*
@@ -104,7 +108,7 @@ qlength_time_idx<-unlist(lapply(seq(1, length(gdp.bd$NYstartHour)),function(x){
 
 
 #do pm 5 hours from*
-pm=10
+pm=5
 airdelay<-lapply(seq(1:length(aspm_time_idx)), function(x){
 	aspm[seq(aspm_time_idx[x]-pm,aspm_time_idx[x]+pm),]$AirDelay})
 

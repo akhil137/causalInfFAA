@@ -1,0 +1,131 @@
+Causal Inference
+========================================================
+author: Akhil Shah
+date: 
+
+Counterfactual Estimation
+========================================================
+* Consider a situation that will likely require GDP
+* Decision makers would like to quantify *what if* we don't apply a GDP
+* Causal Inference methods can help estimate this counterfactual
+* Use machine learning methods to generate these counterfactuals
+* example: What happens to airborne delay if a GDP is not implemented?
+
+Causal Inference in a nutshell
+========================================================
+* Unbiased counterfactual estimation requires eliminating confounders
+* Eliminate counfounders through propensity scores
+* Estimate propensity score through ML: Gradient Boosting Machines (GBM)
+* GBM more flexible and robust that logistic regression modeling 
+
+GDP events: planned vs "backdated"
+========================================================
+```{r,echo=FALSE,eval=FALSE}
+#from airborneDelay.r
+setwd("~/NoBackup/code/nasa/src/causalInfFAA/data")
+ap<-"JFK"
+airport<-paste(ap,"/ZNY",sep="")
+
+advy.path<-"~/NoBackup/code/nasa/data/advy_2010_2014"
+
+filelist<-dir(advy.path,pattern="*.csv")
+filepaths<-unlist(lapply(filelist,function(x){file.path(advy.path,x)}))
+
+#below gdp.ewr is badly named!!! can be any ap defined above
+#also need to source twangDataCreation.r or copy and paste getGDP func from it
+source("~/NoBackup/code/nasa/src/causalInfFAA/getGDP.r")
+gdp.ewr.list<-lapply(c(1:20),function(x){data.frame(getGDP(filepaths[x],airport))})
+gdp.ewr<-do.call(rbind,gdp.ewr.list)
+
+gdponly<-gdp.ewr[gdp.ewr$status=="GDP",]
+save(gdponly,file="~/NoBackup/code/nasa/src/causalInfFAA/data/JFKGDPOnlyEvents")
+```
+JFK 2010-2014: 496 GDP root advisories; 71 were 'backdated' 
+* Large variance in time horizons for planned GDP, 
+```{r,echo=FALSE,fig.height=3,fig.width=4,fig.align='center'}
+load(file="~/NoBackup/code/nasa/src/causalInfFAA/data/JFKGDPOnlyEvents")
+#lets select only root adv*
+gdponlyroot<-gdponly[gdponly$rootAdv==1,]
+gdponlyroot$backdated<-as.factor(gdponlyroot$startTime-gdponlyroot$sendTime<0)
+#there were 71 backdated and 425 planned GDP events between 2010-2014
+#some histogram plotting of how timely these events can be
+library(ggplot2)
+rootTimeliness<-ggplot(gdponlyroot,aes(as.numeric(startTime-sendTime)))
+rootTimeliness + xlim(c(-100,500)) + geom_histogram(binwidth=10) + facet_grid(backdated ~ .) +  labs(title="Distribution of all GDP Root Advisories",x="Start-Send time in Minutes")
+```
+
+* whereas backdated GDP events usually start within 10 minutes prior to sending
+```{r,echo=FALSE,fig.height=3,fig.width=4,fig.align='center'}
+#zoom into backdated histogram
+bd<-ggplot(gdponlyroot,aes(as.numeric(startTime-sendTime),backdated=TRUE))
+bd + xlim(c(-40,0)) + geom_histogram(binwidth=1) + labs(title="Distribution of BackDated GDP Root Advisories",x="Start-Send time in Minutes")
+```
+
+Airborne Delay and Arrival Queue dynamics
+========================================================
+* What effect does a GDP have on these?
+* Consider +/-5 hours centered on backdated GDP events
+```{r,echo=FALSE,eval=FALSE}
+gdp.backdated<-gdponlyroot[gdponlyroot$startTime-gdponlyroot$sendTime<0,]
+#get rid of that bulky full text advisory
+gdp.bd<-gdp.backdated[,-8]
+#round to nearest hour then convert to nY time*
+gdp.bd$startHour<-round(gdp.bd$startTime,"hour") 
+#after formatting, the result is a character*
+gdp.bd$NYstartHour<-format(as.POSIXct(gdp.bd$startHour),tz="America/New_York")
+save(gdp.bd,file="~/NoBackup/code/nasa/src/causalInfFAA/data/JFKGDPBackDatedOnlyEvents")
+```
+
+
+```{r,echo=FALSE,eval=FALSE}
+load("~/NoBackup/code/nasa/src/causalInfFAA/data/JFKGDPBackDatedOnlyEvents")
+load("~/NoBackup/code/nasa/src/causalInfFAA/data/JFK_ASPMQueueLength_timestamped_data.Rdata")
+#to extract aspm index compare correct tz*
+#we're going to cycle thru each gdp.bd start hour in NY time zone
+#and find the the aspm index which corresponds to it by matchgin the 
+#aspm timestamp
+load("~/NoBackup/code/nasa/src/causalInfFAA/data/JFK_ASPMAirborneDelay_timestamped_data.Rdata")
+#fix the column name for air delay
+colnames(aspm)<-c("timestamp","A","AirDelay")
+aspm_time_idx<-unlist(lapply(seq(1, length(gdp.bd$NYstartHour)),function(x){
+	which(aspm$timestamp==as.POSIXlt(gdp.bd$NYstartHour[x],tz="America/New_York"))}))
+qlength_time_idx<-unlist(lapply(seq(1, length(gdp.bd$NYstartHour)),function(x){
+	which(qdat.hourly$timestamp==as.POSIXlt(gdp.bd$NYstartHour[x],tz="America/New_York"))}))
+#do pm 5 hours from start of backdated GDP
+pm=5
+airdelay<-lapply(seq(1:length(aspm_time_idx)), function(x){
+	aspm[seq(aspm_time_idx[x]-pm,aspm_time_idx[x]+pm),]$AirDelay})
+
+qlength<-lapply(seq(1:length(qlength_time_idx)), function(x){
+	qdat.hourly[seq(qlength_time_idx[x]-pm,qlength_time_idx[x]+pm),]$qlength})
+#now melt these for easy plotting: L1 is the event id (recall there are 71 backdated gdp events)
+#the time variable ranges from -5 to +5, where time=0 is start of backdated gdp event
+library(reshape)
+ad<-melt.list(airdelay)
+ad$time<-rep(seq(-pm,pm),length(airdelay))
+#qlength data from Amy (in qdat.hourly) only goes until 8/31/2014 whereas
+#aspm data goes until 12/31/2014.  Thus only 66 backdated events in ql
+ql<-melt.list(qlength)
+ql$time<-rep(seq(-pm,pm),length(qlength))
+save(ad,file="~/NoBackup/code/nasa/src/causalInfFAA/data/AirDelayDynamicsPM5HoursAroundBackDatedGDP")
+save(ql,file="~/NoBackup/code/nasa/src/causalInfFAA/data/QueueLengthDynamicsPM5HoursAroundBackDatedGDP")
+```
+
+```{r,echo=FALSE,fig.width=6,fig.height=5}
+load("~/NoBackup/code/nasa/src/causalInfFAA/data/AirDelayDynamicsPM5HoursAroundBackDatedGDP")
+load("~/NoBackup/code/nasa/src/causalInfFAA/data/QueueLengthDynamicsPM5HoursAroundBackDatedGDP")
+library(ggplot2)
+
+#plot the first 4 events for queue length and airborne delay dynamics
+ggplot(ql[ql$L1<5,],aes(x=time,y=value,group=L1))+geom_smooth(alpha=0.01, size=.5,aes(colour=factor(L1))) + geom_point(aes(colour=factor(L1)))+labs(title="Dynamics of Arrival Queue Around a backdated GDP",x="Relative time [hours]",y="Number in Arrival Queue")
+ggplot(ad[ad$L1<5,],aes(x=time,y=value,group=L1))+geom_smooth(alpha=0.01, size=.5,aes(colour=factor(L1))) + geom_point(aes(colour=factor(L1)))+labs(title="Dynamics of Airborne Delay Around a backdated GDP",x="Relative time [hours]",y="Airborne Delay [minutes]")
+
+```
+
+
+Slide With Plot
+========================================================
+
+```{r, echo=FALSE}
+plot(cars)
+```
