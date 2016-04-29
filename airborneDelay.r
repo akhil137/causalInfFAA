@@ -96,11 +96,21 @@ gdp.bd$NYstartHour[1]
 #[1] "2010-01-08 16:00:00"
 aspm$timestamp[160]
 #[1] "2010-01-08 16:00:00 EST"
+#we can do the same for queue length from amy's data; but only goes until 8/27/14
+#whereas gdp data goes until 10/23/14 (but only missing 6 gdp backdated events)
+load("./data/JFK_ASPMQueueLength_timestamped_data.Rdata")
+qlength_time_idx<-unlist(lapply(seq(1, length(gdp.bd$NYstartHour)),function(x){
+	which(qdat.hourly$timestamp==as.POSIXlt(gdp.bd$NYstartHour[x],tz="America/New_York"))}))
+
 
 #do pm 5 hours from*
-pm=5
+pm=10
 airdelay<-lapply(seq(1:length(aspm_time_idx)), function(x){
 	aspm[seq(aspm_time_idx[x]-pm,aspm_time_idx[x]+pm),]$AirDelay})
+
+qlength<-lapply(seq(1:length(qlength_time_idx)), function(x){
+	qdat.hourly[seq(qlength_time_idx[x]-pm,qlength_time_idx[x]+pm),]$qlength})
+
 
 library(reshape)
 ad<-melt.list(airdelay)
