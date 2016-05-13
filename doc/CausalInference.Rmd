@@ -1,8 +1,13 @@
-Causal Inference
-========================================================
-author: Akhil Shah
-date: 
-
+---
+title: "Causal Inference for ATM decision making"
+author: "Akhil Shah"
+date: "May 13, 2016"
+ 
+output:
+  beamer_presentation:
+    fig_width: 4
+    fig_height: 3
+---
 Counterfactual Estimation
 ========================================================
 * Consider a situation that will likely require GDP
@@ -14,23 +19,9 @@ Counterfactual Estimation
 Causal Inference in a nutshell
 ========================================================
 * Unbiased counterfactual estimation requires eliminating confounders
-* Eliminate counfounding through propensity scores - probability to recive treatment (GDP) based on covariates (weather,traffic)
-* Estimation of propensity score (or log-odds of): Linear Logistic regression 
-
-$$\frac{P(GDP=1|X)}{1-P(GDP=1|X)}=F(X) = \beta X$$
-
-* GBM (using K trees) is often better (more flexible and robust) than linear logistic regression
-
-$$F(X) = \sum^K\beta_k g_k(X)$$ 
-
-Recall original motivation
-========================================================
-* Context: a situation (time window) where GDP is to be applied (e.g. inclimate weather)
-* Decision making question: "What if we don't implement a GDP?" 
-* Staticians call this estimation of "average treatment effect on the treated (ATT)": estimate the counterfactual of not applying a GDP
-* What outcome do we want to analyze as a result of applying or not-applying GDP?
-  * Airborn delay
-  * Arrival Queue length
+* Eliminate counfounders through propensity scores
+* Estimate propensity score through ML: Gradient Boosting Machines (GBM)
+* GBM more flexible and robust that logistic regression modeling 
 
 GDP events: planned vs "backdated"
 ========================================================
@@ -75,9 +66,9 @@ bd<-ggplot(gdponlyroot,aes(as.numeric(startTime-sendTime),backdated=TRUE))
 bd + xlim(c(-40,0)) + geom_histogram(binwidth=1) + labs(title="Distribution of BackDated GDP Root Advisories",x="Start-Send time in Minutes")
 ```
 
-Airborne Delay/Arrival Queue dynamics
+Airborne Delay and Arrival Queue dynamics
 ========================================================
-* What effect does a GDP have on these outcomes?
+* What effect does a GDP have on these?
 * Consider +/-5 hours centered on backdated GDP events
 ```{r,echo=FALSE,eval=FALSE}
 gdp.backdated<-gdponlyroot[gdponlyroot$startTime-gdponlyroot$sendTime<0,]
@@ -135,31 +126,17 @@ ggplot(ql[ql$L1<5,],aes(x=time,y=value,group=L1))+geom_smooth(alpha=0.01, size=.
 ggplot(ad[ad$L1<5,],aes(x=time,y=value,group=L1))+geom_smooth(alpha=0.01, size=.5,aes(colour=factor(L1))) + geom_point(aes(colour=factor(L1)))+labs(title="Dynamics of Airborne Delay Around a backdated GDP",x="Relative time [hours]",y="Airborne Delay [minutes]")
 
 ```
-* Both have delayed (offset) decrease after initiation of GDP 
-* Consider outcomes at multiple offsets from treatment (GDP) initiation
-
-Propensity score estimation for GDP
-========================================================
-* Raw data sources for confounding covariates to model propensity score P(GDP)  
-  * TAF hourly weather forecasts 
-  * ASPM hourly weather (sanity check)
-  * TFMI hourly data to extract "GDP" or "No-GDP" at a given AP
-
-"windspeed"      "visibility"     "snow"           "Thunderstorm"             "rain"           "fog"           
-"crosswinds"    "Arrivals"        
-
 
 Data manipulation and alignment
 =======================================================
 * Analysis requires hourly TAF, ASPM (various modules), TFMI  
 * ASPM has hourly values for average airborne delay
   * Queue length from TAER module of ASPM is 15-min based
-  * Arrival Demand and Effective Arrivals (number of serviced aircraft)
-* TAF is (nominally) generated for 0,6,12,18h 
+  * 
+* TAF is (nominally) generated for 0,6,12,18h
 * TFMI is event based 
   * GDP initations (root advisories) can be modified
-  * Must follow the sub time-series to get actual start/stop times
-  * End-result is 'status' of each hour (GDP or No-GDP)
+  * Must follow the sub time-series to get start/stop times
 
 
 
@@ -169,32 +146,9 @@ Feature Relevance
 ```{r, echo=FALSE}
 #do some feature relevance analysis with xgboost
 library(xgboost)
-#FIRST include qlength as a feature
 #get rid of timestamp; hours; AirDelay; status
 xgbdat<-twang.complete[,c(-1,-9,-11,-13)] 
 dtrain <- xgb.DMatrix(data = as.matrix(xgbdat),label=twang.complete$status)
-#create the model
-model <- xgboost(data = dtrain, nrounds = 20, objective = "binary:logistic")
-#generate importance matrix
-imp_matrix <- xgb.importance(feature_names = colnames(xgbdat), model = model)
-xgb.plot.importance(importance_matrix = imp_matrix)
-
-#show histogram difference between qlength when gdp and not
-qlen_hist<-ggplot(twang.complete,aes(qlength)) + geom_histogram(binwidth=5) +facet_grid(status ~ .,scales = "free_y")
-qlen_hist+labs(title="Distriubtions of Queue Length based on GDP status")
-
-#show histogram difference between Num arrivals when gdp and not
-ggplot(twang.complete,aes(A_JFK)) + geom_histogram(binwidth=1) +facet_grid(status ~ .,scales = "free_y") + labs(title="Distriubtions of Arrival count at JFK based on GDP status")
-
-
-#NOW get rid of qlength and recalculate feature importance
-xgbdat<-twang.complete[,c(-1,-9,-11,-12,-13)] 
-dtrain <- xgb.DMatrix(data = as.matrix(xgbdat),label=twang.complete$status)
-#create the model
-model <- xgboost(data = dtrain, nrounds = 20, objective = "binary:logistic")
-#generate importance matrix
-imp_matrix <- xgb.importance(feature_names = colnames(xgbdat), model = model)
-xgb.plot.importance(importance_matrix = imp_matrix)
 ```
 
 Covariate Balancing with PS

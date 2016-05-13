@@ -4,8 +4,8 @@
 
 
 # Point out the directories for the input and feature data
-new_TAF_dir = "/Volumes/NASA_data/data_raw/airport_weather/TAF/NY_TAF/"
-feature_dir = "/Volumes/NASA_data/features_data/"
+new_TAF_dir = "/Users/ashah/NoBackup/code/nasa/data/TAF/NY_TAF/"
+feature_dir = "/Users/ashah/NoBackup/code/nasa/src/causalInfFAA/data"
 
 # Create blank vectors for storing key data found in TAFs.  Key data include:
 # Date and time TAF issued, forecast start and end times of weather, cloud ceilings, visibility,

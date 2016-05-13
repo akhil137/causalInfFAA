@@ -92,7 +92,8 @@ save(gdp.bd,file="~/NoBackup/code/nasa/src/causalInfFAA/data/JFKGDPBackDatedOnly
 #and find the the aspm index which corresponds to it by matchgin the 
 #aspm timestamp
 load("~/NoBackup/code/nasa/src/causalInfFAA/data/JFK_ASPMAirborneDelay_timestamped_data.Rdata")
-aspm$AirDelay<-aspm$AirDelay_JFK
+#fix the column name for air delay
+colnames(aspm)<-c("timestamp","A","AirDelay")
 aspm_time_idx<-unlist(lapply(seq(1, length(gdp.bd$NYstartHour)),function(x){
 	which(aspm$timestamp==as.POSIXlt(gdp.bd$NYstartHour[x],tz="America/New_York"))}))
 #note it works for the first startHour*
