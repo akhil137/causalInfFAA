@@ -162,7 +162,6 @@ Data manipulation and alignment
   * End-result is 'status' of each hour (GDP or No-GDP)
 
 
-
 Feature Relevance
 =======================================================
 
@@ -197,12 +196,53 @@ imp_matrix <- xgb.importance(feature_names = colnames(xgbdat), model = model)
 xgb.plot.importance(importance_matrix = imp_matrix)
 ```
 
+
+Focusing on backdated GDP events
+=======================================================
+```{r, echo=FALSE}
+#first check how many days (dates) are in common between forecasted and backdated
+gdponlyroot<-gdponly[gdponly$rootAdv==1,]
+gdponlyroot$backdated<-as.factor(gdponlyroot$startTime-gdponlyroot$sendTime<0)
+gdp.forecasted<-gdponlyroot[gdponlyroot$backdated==FALSE,]
+gdp.forecasted$startHour<-round(gdp.forecasted$startTime,"hour") 
+gdp.forecasted$NYstartHour<-format(as.POSIXct(gdp.forecasted$startHour),tz="America/New_York")
+gdp.dates.forecasted<-unique(as.Date(gdp.forecasted$NYstartHour))
+gdp.dates.bd<-unique(as.Date(gdp.bd$NYstartHour))
+#as shown below, only two dates: "2013-06-10" "2014-06-25"
+as.Date(intersect(as.character(gdp.dates.bd),as.character(gdp.dates.forecasted)))
+#we can then filter the twang.complete dataframe using backdated dates as key
+#isolate no GDP events
+twang.complete.noGDP<-twang.complete[twang.complete$status==0,]
+#isolate all GDP events
+twang.complete.GDP<-twang.complete[twang.complete$status==1,]
+#of those, isolate backdated by date
+twang.complete.GDP.date<-as.Date(twang.complete.GDP$timestamp)
+#create a flag and apply it to GDP events
+bd_flag<-sapply(twang.complete.GDP.date,function(x){is.element(x,gdp.dates.bd)})
+twang.complete.GDP.bd<-twang.complete.GDP[bd_flag,]
+
+twang.complete.GDP.forecasted<-twang.complete.GDP[!bd_flag,]
+#there are 13 days with backdated events, 80 forecasted GDP, and 325 days of no GDP
+num_days_forecasted<-length(unique(as.Date(twang.complete.GDP.forecasted$timestamp)))
+num_days_bd<-length(unique(as.Date(twang.complete.GDP.bd$timestamp)))
+num_days_noGDP<-length(unique(as.Date(twang.complete.noGDP$timestamp)))
+#now create two datasets; backdated + no GDP and forecasted + no GDP (we already have total)
+
+
+```
+
+
+Correlating forecasted vs observed weather
+=======================================================
+
+
+
 Covariate Balancing with PS
 =======================================================
 
 ```{r, echo=FALSE}
 #load dataset for JFK: covs + outcome (air delay) + treatment status (status)
 library(twang)
-load("JFK_twang_withASPMweather_noNA_timestamped_data.Rdata")
-
+#load("JFK_twang_withASPMweather_noNA_timestamped_data.Rdata")
+ps.model.noqueue<-ps(status ~ A_JFK + windspeed + crosswinds + )
 ```
