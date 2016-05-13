@@ -373,7 +373,7 @@ Outcome analysis - Regression without balance
 
 Outcome analysis - Regression with balance 1
 =======================================================
-Withouth using queue length, the weights (IPTW) say Airborne delay increases
+Withouth using queue length, the weights (IPTW) say avg hourly airborne delay increases (5.3 mins)
 ```{r,echo=FALSE,eval=FALSE}
 library(survey)
 twang.complete.bd$w<-get.weights(ps.model.noqueue,stop.method="es.mean")
@@ -384,6 +384,8 @@ summary(glm1)
 
 Outcome analysis - Regression with balance 2
 =======================================================
+With queue lenght, average airborne delay actually decreases (by 1.4 min) with GDP.
+```{r,echo=FALSE,eval=FALSE}
 twang.complete.bd$w<-get.weights(ps.model.withqueue,stop.method="es.mean")
 design.jfk<-svydesign(ids=~1, weights=~w, data=twang.complete.bd)
 glm1<-svyglm(AirDelay_JFK ~ status, design=design.jfk)
