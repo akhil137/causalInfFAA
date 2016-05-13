@@ -1,3 +1,4 @@
+#see summary.pdf in doc for other details
 Causal Inference
 ========================================================
 author: Akhil Shah
@@ -138,15 +139,6 @@ ggplot(ad[ad$L1<5,],aes(x=time,y=value,group=L1))+geom_smooth(alpha=0.01, size=.
 * Both have delayed (offset) decrease after initiation of GDP 
 * Consider outcomes at multiple offsets from treatment (GDP) initiation
 
-Propensity score estimation for GDP
-========================================================
-* Raw data sources for confounding covariates to model propensity score P(GDP)  
-  * TAF hourly weather forecasts 
-  * ASPM hourly weather (sanity check)
-  * TFMI hourly data to extract "GDP" or "No-GDP" at a given AP
-
-"windspeed"      "visibility"     "snow"           "Thunderstorm"             "rain"           "fog"           
-"crosswinds"    "Arrivals"        
 
 
 Data manipulation and alignment
@@ -164,10 +156,11 @@ Data manipulation and alignment
 
 Feature Relevance
 =======================================================
-
+as
 ```{r, echo=FALSE}
 #do some feature relevance analysis with xgboost
 library(xgboost)
+load("~/NoBackup/code/nasa/src/causalInfFAA/data/JFK_twang_withASPMweather_noNA_timestamped_data.Rdata")
 #FIRST include qlength as a feature
 #get rid of timestamp; hours; AirDelay; status
 xgbdat<-twang.complete[,c(-1,-9,-11,-13)] 
@@ -199,7 +192,9 @@ xgb.plot.importance(importance_matrix = imp_matrix)
 
 Focusing on backdated GDP events
 =======================================================
-```{r, echo=FALSE}
+```{r,echo=FALSE,eval=FALSE}
+load("~/NoBackup/code/nasa/src/causalInfFAA/data/JFK_GDPStatus_timestamped_data.Rdata")
+load("~/NoBackup/code/nasa/src/causalInfFAA/data/JFK_GDPBackDated_timestamped_data")
 #first check how many days (dates) are in common between forecasted and backdated
 gdponlyroot<-gdponly[gdponly$rootAdv==1,]
 gdponlyroot$backdated<-as.factor(gdponlyroot$startTime-gdponlyroot$sendTime<0)
@@ -227,8 +222,13 @@ num_days_forecasted<-length(unique(as.Date(twang.complete.GDP.forecasted$timesta
 num_days_bd<-length(unique(as.Date(twang.complete.GDP.bd$timestamp)))
 num_days_noGDP<-length(unique(as.Date(twang.complete.noGDP$timestamp)))
 #now create two datasets; backdated + no GDP and forecasted + no GDP (we already have total)
-
-
+twang.complete.bd<-rbind(twang.complete.noGDP,twang.complete.GDP.bd)
+twang.complete.forecasted<-rbind(twang.complete.noGDP,twang.complete.GDP.forecasted)
+#note the breakdown of 'treatment' status in all three datasets and how the add up
+table(twang.complete.bd$status) #6519 in control group (no GDP); 84 in treatment
+table(twang.complete.forecasted$status)
+table(twang.complete$status)
+#save these as indiv datasets
 ```
 
 
@@ -237,12 +237,155 @@ Correlating forecasted vs observed weather
 
 
 
-Covariate Balancing with PS
+Covariate Balancing with PS for backdated 1
 =======================================================
-
-```{r, echo=FALSE}
+First don't use queue length as a covariate
+```{r, echo=FALSE,eval=FALSE}
 #load dataset for JFK: covs + outcome (air delay) + treatment status (status)
 library(twang)
 #load("JFK_twang_withASPMweather_noNA_timestamped_data.Rdata")
-ps.model.noqueue<-ps(status ~ A_JFK + windspeed + crosswinds + )
+ps.model.noqueue<-ps(status ~ A_JFK + windspeed + visibility + crosswinds + vis_ASPM + windspeed_ASPM + ceil_ASPM + crosswind_ASPM,data=twang.complete.bd,estimand="ATT")
+#show imbalance and balanced tables 
+bal.jfk<-bal.table(ps.model.noqueue)
+pretty.tab <- bal.jfk$unw[,c("tx.mn","ct.mn","ks.pval")]
+names(pretty.tab) <- c("E(Y1|t=1)","E(Y0|t=0)","p-value")
+pretty.tab.weighted <- bal.jfk$ks.mean.ATT[,c("tx.mn","ct.mn","ks.pval")]
+names(pretty.tab.weighted) <- c("E(Y1|t=1)","E(Y0|t=1)","p-value","E(Y0|t=0)")
 ```
+\begin{table}[ht]
+\centering
+\begin{tabular}{lrrr}
+  \hline
+ & E(Y1$|$t=1) & E(Y0$|$t=0) & p-value \\ 
+  \hline
+A\_JFK & 34.84 & 21.90 & -0.00 \\ 
+  windspeed & 12.30 & 10.86 & 0.08 \\ 
+  visibility & 7.16 & 9.27 & 0.00 \\ 
+  crosswinds & 9.74 & 7.47 & 0.00 \\ 
+  vis\_ASPM & 7.72 & 9.26 & 0.00 \\ 
+  windspeed\_ASPM & 15.16 & 11.36 & 0.00 \\ 
+  ceil\_ASPM & 228.01 & 481.68 & 0.00 \\ 
+  crosswind\_ASPM & 8.64 & 6.96 & 0.00 \\ 
+   \hline
+\end{tabular}
+\caption{Imbalance of the treatment and comparison groups for various weather and traffic (arrivals count) features (covariates)} 
+\label{tab:imbalance}
+\end{table}
+
+% latex table generated in R 3.1.0 by xtable 1.7-4 package
+% Fri May 13 14:47:54 2016
+\begin{table}[ht]
+\centering
+\begin{tabular}{lrrrr}
+  \hline
+ & E(Y1$|$t=1) & E(Y0$|$t=1) & p-value & E(Y0$|$t=0) \\ 
+  \hline
+A\_JFK & 34.84 & 33.14 & 0.44 & 21.90 \\ 
+  windspeed & 12.30 & 11.71 & 0.81 & 10.86 \\ 
+  visibility & 7.16 & 8.09 & 0.04 & 9.27 \\ 
+  crosswinds & 9.74 & 8.97 & 0.59 & 7.47 \\ 
+  vis\_ASPM & 7.72 & 8.08 & 0.62 & 9.26 \\ 
+  windspeed\_ASPM & 15.16 & 13.93 & 0.37 & 11.36 \\ 
+  ceil\_ASPM & 228.01 & 309.61 & 0.11 & 481.68 \\ 
+  crosswind\_ASPM & 8.64 & 8.65 & 0.92 & 6.96 \\ 
+   \hline
+\end{tabular}
+\caption{Simulated counterfactual E(Y0|t=1) and assessment of balance achieved by propensity score weighting the treatment and comparison groups using IPTW} 
+\label{tab:balance}
+\end{table}
+
+
+Covariate Balancing with PS for backdated 2
+=======================================================
+Now use queue length as a covariate
+```{r,echo=FALSE,eval=FALSE}
+ps.model.withqueue<-ps(status ~ qlength + A_JFK + windspeed + visibility + crosswinds + vis_ASPM + windspeed_ASPM + ceil_ASPM + crosswind_ASPM,data=twang.complete.bd,estimand="ATT")
+#balance tables
+bal.jfk.withqueue<-bal.table(ps.model.withqueue)
+pretty.tab <- bal.jfk$unw[,c("tx.mn","ct.mn","ks.pval")]
+names(pretty.tab) <- c("E(Y1|t=1)","E(Y0|t=0)","p-value")
+xtable(pretty.tab,
+caption = "Imbalance of the treatment and comparison groups for various weather and traffic (arrivals count) features (covariates)",
+label = "tab:imbalance",
+digits = c(0, 2, 2, 2),
+align=c("l","r","r","r"))
+
+pretty.tab <- bal.jfk$ks.mean.ATT[,c("tx.mn","ct.mn","ks.pval")]
+pretty.tab <- cbind(pretty.tab, bal.jfk$unw[,"ct.mn"])
+names(pretty.tab) <- c("E(Y1|t=1)","E(Y0|t=1)","p-value","E(Y0|t=0)")
+xtable(pretty.tab,
+caption = "Simulated counterfactual E(Y0|t=1) and assessment of balance achieved by propensity score weighting the treatment and comparison groups using IPTW",
+label = "tab:balance",
+digits = c(0, 2, 2, 2, 2),
+align=c("l","r","r","r","r"))
+```
+
+% latex table generated in R 3.1.0 by xtable 1.7-4 package
+% Fri May 13 15:02:28 2016
+\begin{table}[ht]
+\centering
+\begin{tabular}{lrrr}
+  \hline
+ & E(Y1$|$t=1) & E(Y0$|$t=0) & p-value \\ 
+  \hline
+qlength & 53.62 & 2.31 & -0.00 \\ 
+  A\_JFK & 34.84 & 21.90 & -0.00 \\ 
+  windspeed & 12.30 & 10.86 & 0.08 \\ 
+  visibility & 7.16 & 9.27 & 0.00 \\ 
+  crosswinds & 9.74 & 7.47 & 0.00 \\ 
+  vis\_ASPM & 7.72 & 9.26 & 0.00 \\ 
+  windspeed\_ASPM & 15.16 & 11.36 & 0.00 \\ 
+  ceil\_ASPM & 228.01 & 481.68 & 0.00 \\ 
+  crosswind\_ASPM & 8.64 & 6.96 & 0.00 \\ 
+   \hline
+\end{tabular}
+\caption{Imbalance of the treatment and comparison groups for various weather and traffic (arrivals count) features (covariates)} 
+\label{tab:imbalance}
+\end{table}
+
+% latex table generated in R 3.1.0 by xtable 1.7-4 package
+% Fri May 13 15:03:38 2016
+\begin{table}[ht]
+\centering
+\begin{tabular}{lrrrr}
+  \hline
+ & E(Y1$|$t=1) & E(Y0$|$t=1) & p-value & E(Y0$|$t=0) \\ 
+  \hline
+qlength & 53.62 & 44.50 & 0.09 & 2.31 \\ 
+  A\_JFK & 34.84 & 33.24 & 0.61 & 21.90 \\ 
+  windspeed & 12.30 & 12.45 & 0.76 & 10.86 \\ 
+  visibility & 7.16 & 7.92 & 0.11 & 9.27 \\ 
+  crosswinds & 9.74 & 9.30 & 0.73 & 7.47 \\ 
+  vis\_ASPM & 7.72 & 7.72 & 0.87 & 9.26 \\ 
+  windspeed\_ASPM & 15.16 & 14.31 & 0.72 & 11.36 \\ 
+  ceil\_ASPM & 228.01 & 265.83 & 0.16 & 481.68 \\ 
+  crosswind\_ASPM & 8.64 & 8.62 & 0.73 & 6.96 \\ 
+   \hline
+\end{tabular}
+\caption{Simulated counterfactual E(Y0|t=1) and assessment of balance achieved by propensity score weighting the treatment and comparison groups using IPTW} 
+\label{tab:balance}
+\end{table}
+
+
+Outcome analysis - Regression without balance 
+=======================================================
+
+
+Outcome analysis - Regression with balance 1
+=======================================================
+Withouth using queue length, the weights (IPTW) say Airborne delay increases
+```{r,echo=FALSE,eval=FALSE}
+library(survey)
+twang.complete.bd$w<-get.weights(ps.model.noqueue,stop.method="es.mean")
+design.jfk<-svydesign(ids=~1, weights=~w, data=twang.complete.bd)
+glm1<-svyglm(AirDelay_JFK ~ status, design=design.jfk)
+summary(glm1)
+```
+
+Outcome analysis - Regression with balance 2
+=======================================================
+twang.complete.bd$w<-get.weights(ps.model.withqueue,stop.method="es.mean")
+design.jfk<-svydesign(ids=~1, weights=~w, data=twang.complete.bd)
+glm1<-svyglm(AirDelay_JFK ~ status, design=design.jfk)
+summary(glm1)
+
