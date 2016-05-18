@@ -24,10 +24,10 @@ output:
     * systematic differences in weather/traffic between instances of GDP and not-GDP 
 * Causal Inference methods can help estimate *unbiased* counterfactuals 
 * The modern methods of Causal Inference employ Machine Learning models
-* example: What happens to airborne delay if a GDP is not implemented?
 
 # Causal Inference in a nutshell
 * Unbiased counterfactual estimation requires eliminating confounders
+    * confounder: covariate which affects treatment status (GDP or no-GDP) and outcome (Airborne delay)
 * Eliminate counfounding through propensity scores - probability to recive treatment (GDP) based on covariates (weather,traffic)
 * Estimation of propensity score (or log-odds of): Linear Logistic regression 
 
@@ -89,11 +89,29 @@ rootTimeliness + xlim(c(-100,500)) + geom_histogram(binwidth=10) + facet_grid(ba
 
 #Backdated GDP start almost immediately
 * Backdated GDP events usually start within 10 minutes prior to sending
-```{r gdp_bd_event_dist,warning=FALSE,echo=FALSE,fig.height=3,fig.width=4,fig.align='center'}
+```{r gdp_bd_event_dist,warning=FALSE,echo=FALSE,fig.height=2,fig.width=5,fig.align='center'}
 #zoom into backdated histogram
 bd<-ggplot(gdponlyroot,aes(as.numeric(startTime-sendTime),backdated=TRUE))
 bd + xlim(c(-40,0)) + geom_histogram(binwidth=1) + labs(title="Distribution of BackDated GDP Root Advisories",x="Start-Send time in Minutes")
 ```
+
+#Airborne Delay and Arrival Queue dynamics
+* What effect does a GDP have on these potential outcomes?
+* Consider +/-5 hours centered on backdated GDP events
+```{r,echo=FALSE,fig.width=3,fig.height=2}
+load("~/NoBackup/code/nasa/src/causalInfFAA/data/AirDelayDynamicsPM5HoursAroundBackDatedGDP")
+load("~/NoBackup/code/nasa/src/causalInfFAA/data/QueueLengthDynamicsPM5HoursAroundBackDatedGDP")
+library(ggplot2)
+
+#plot the first 4 events for queue length and airborne delay dynamics
+ggplot(ql[ql$L1<5,],aes(x=time,y=value,group=L1))+geom_smooth(alpha=0.01, size=.5,aes(colour=factor(L1))) + geom_point(aes(colour=factor(L1)))+labs(title="Dynamics of Arrival Queue Around a backdated GDP",x="Relative time [hours]",y="Number in Arrival Queue")
+ggplot(ad[ad$L1<5,],aes(x=time,y=value,group=L1))+geom_smooth(alpha=0.01, size=.5,aes(colour=factor(L1))) + geom_point(aes(colour=factor(L1)))+labs(title="Dynamics of Airborne Delay Around a backdated GDP",x="Relative time [hours]",y="Airborne Delay [minutes]")
+
+```
+* Both have delayed (offset) decrease after initiation of GDP 
+* Consider outcomes at multiple offsets from treatment (GDP) initiation
+
+
 
 #A note about data sets and alignment
 * Analysis requires hourly TAF, ASPM (various modules), TFMI  
@@ -124,7 +142,12 @@ qlen_hist<-ggplot(twang.complete.bd,aes(qlength)) + geom_histogram(binwidth=5) +
 qlen_hist+labs(title="Arrival Queue Length at JFK based on GDP status")
 ```
 
-#A possbily relevant feature: Number of Arrivals 
+#A note about ASPM arrival counts and ``Queue Length""  
+
+* There are two sets of arrival counts in ASPM: Hourly and Quarter-Hourly (from TAER module)
+* The TAER module provides: ARRDEMAND (expected arrival demand) and EFFARR (counts of wheels on ground)
+* The hourly arrivals counts are highly correlated with EFFARR
+* We define Queue Length = ARRDEMAND - EFFARR and aggregate these quarter hour counts of ``unserved" aircraft up to the hour
 ```{r num_arrivals,warning=FALSE, echo=FALSE,fig.height=3,fig.width=4,fig.align='center'}
 #show histogram difference between Num arrivals when gdp and not
 ggplot(twang.complete.bd,aes(A_JFK)) + geom_histogram(binwidth=1) +facet_grid(status ~ .,scales = "free_y",labeller = label_both) + labs(title="Number of Arrivals at JFK based on GDP status")
