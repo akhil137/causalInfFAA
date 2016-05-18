@@ -2,30 +2,55 @@
 title: "Causal Inference for ATM decision making"
 author: "Akhil Shah"
 date: "May 13, 2016"
+fontsize: 10pt
  
 output:
   beamer_presentation:
-    fig_width: 4
-    fig_height: 3
+    fig_width: 2
+    fig_height: 1
+    theme: "AnnArbor"
+    colortheme: "dolphin"
+    fonttheme: "structurebold"
+    keep_tex: true
 ---
-Counterfactual Estimation
-========================================================
+
+#Every decision-makers wish: 'what if...'
 * Consider a situation that will likely require GDP
-* Decision makers would like to quantify *what if* we don't apply a GDP
-* Causal Inference methods can help estimate this counterfactual
-* Use machine learning methods to generate these counterfactuals
+* Decision makers want to know ``*what if* we don't employ GDP?"
+    * and quantify potential outcomes (airborne delay?)
+* The challenge: Historical ATM data is *observational*! 
+    * not a randomized control trial 
+    * counterfactuals are never observed
+    * systematic differences in weather/traffic between instances of GDP and not-GDP 
+* Causal Inference methods can help estimate *unbiased* counterfactuals 
+* The modern methods of Causal Inference employ Machine Learning models
 * example: What happens to airborne delay if a GDP is not implemented?
 
-Causal Inference in a nutshell
-========================================================
+# Causal Inference in a nutshell
 * Unbiased counterfactual estimation requires eliminating confounders
-* Eliminate counfounders through propensity scores
-* Estimate propensity score through ML: Gradient Boosting Machines (GBM)
-* GBM more flexible and robust that logistic regression modeling 
+* Eliminate counfounding through propensity scores - probability to recive treatment (GDP) based on covariates (weather,traffic)
+* Estimation of propensity score (or log-odds of): Linear Logistic regression 
 
-GDP events: planned vs "backdated"
-========================================================
+$$\frac{P(GDP=1|X)}{1-P(GDP=1|X)}=F(X) = \beta X$$
+
+* GBM (using K trees) is often better (more flexible and robust) than linear logistic regression
+
+$$F(X) = \sum^K\beta_k g_k(X)$$ 
+
+#A first application: Backdated GDP events
+
+* Recall motivation: a situation (time window) where GDP is to be applied (e.g. inclimate weather)
+* Decision making question: "What if we don't implement a GDP?" 
+* Staticians call this estimation of "average treatment effect on the treated (ATT)": estimate the counterfactual of not applying a GDP
+* What outcome do we want to analyze as a result of applying or not-applying GDP?
+    - Airborne delay
+* GDP events in response to current conditions may be easier to interpret
+    - Less forecast uncertainties than planned GDP
+
+#GDP events: planned vs "backdated"
+
 ```{r,echo=FALSE,eval=FALSE}
+#------FOR REF ONLY: USED TO CREATE DATSET FOR LATER ANALYSIS------
 #from airborneDelay.r
 setwd("~/NoBackup/code/nasa/src/causalInfFAA/data")
 ap<-"JFK"
@@ -45,9 +70,11 @@ gdp.ewr<-do.call(rbind,gdp.ewr.list)
 gdponly<-gdp.ewr[gdp.ewr$status=="GDP",]
 save(gdponly,file="~/NoBackup/code/nasa/src/causalInfFAA/data/JFKGDPOnlyEvents")
 ```
-JFK 2010-2014: 496 GDP root advisories; 71 were 'backdated' 
-* Large variance in time horizons for planned GDP, 
-```{r,echo=FALSE,fig.height=3,fig.width=4,fig.align='center'}
+
+
+- JFK 2010-2014: 496 GDP root advisories; 71 were 'backdated' 
+- Large variance in time horizons for planned GDP 
+```{r gdp_event_types,warning=FALSE,echo=FALSE,fig.height=3,fig.width=4,fig.align='center'}
 load(file="~/NoBackup/code/nasa/src/causalInfFAA/data/JFKGDPOnlyEvents")
 #lets select only root adv*
 gdponlyroot<-gdponly[gdponly$rootAdv==1,]
@@ -59,104 +86,77 @@ rootTimeliness<-ggplot(gdponlyroot,aes(as.numeric(startTime-sendTime)))
 rootTimeliness + xlim(c(-100,500)) + geom_histogram(binwidth=10) + facet_grid(backdated ~ .) +  labs(title="Distribution of all GDP Root Advisories",x="Start-Send time in Minutes")
 ```
 
-* whereas backdated GDP events usually start within 10 minutes prior to sending
-```{r,echo=FALSE,fig.height=3,fig.width=4,fig.align='center'}
+
+#Backdated GDP start almost immediately
+* Backdated GDP events usually start within 10 minutes prior to sending
+```{r gdp_bd_event_dist,warning=FALSE,echo=FALSE,fig.height=3,fig.width=4,fig.align='center'}
 #zoom into backdated histogram
 bd<-ggplot(gdponlyroot,aes(as.numeric(startTime-sendTime),backdated=TRUE))
 bd + xlim(c(-40,0)) + geom_histogram(binwidth=1) + labs(title="Distribution of BackDated GDP Root Advisories",x="Start-Send time in Minutes")
 ```
 
-Airborne Delay and Arrival Queue dynamics
-========================================================
-* What effect does a GDP have on these?
-* Consider +/-5 hours centered on backdated GDP events
-```{r,echo=FALSE,eval=FALSE}
-gdp.backdated<-gdponlyroot[gdponlyroot$startTime-gdponlyroot$sendTime<0,]
-#get rid of that bulky full text advisory
-gdp.bd<-gdp.backdated[,-8]
-#round to nearest hour then convert to nY time*
-gdp.bd$startHour<-round(gdp.bd$startTime,"hour") 
-#after formatting, the result is a character*
-gdp.bd$NYstartHour<-format(as.POSIXct(gdp.bd$startHour),tz="America/New_York")
-save(gdp.bd,file="~/NoBackup/code/nasa/src/causalInfFAA/data/JFKGDPBackDatedOnlyEvents")
-```
-
-
-```{r,echo=FALSE,eval=FALSE}
-load("~/NoBackup/code/nasa/src/causalInfFAA/data/JFKGDPBackDatedOnlyEvents")
-load("~/NoBackup/code/nasa/src/causalInfFAA/data/JFK_ASPMQueueLength_timestamped_data.Rdata")
-#to extract aspm index compare correct tz*
-#we're going to cycle thru each gdp.bd start hour in NY time zone
-#and find the the aspm index which corresponds to it by matchgin the 
-#aspm timestamp
-load("~/NoBackup/code/nasa/src/causalInfFAA/data/JFK_ASPMAirborneDelay_timestamped_data.Rdata")
-#fix the column name for air delay
-colnames(aspm)<-c("timestamp","A","AirDelay")
-aspm_time_idx<-unlist(lapply(seq(1, length(gdp.bd$NYstartHour)),function(x){
-	which(aspm$timestamp==as.POSIXlt(gdp.bd$NYstartHour[x],tz="America/New_York"))}))
-qlength_time_idx<-unlist(lapply(seq(1, length(gdp.bd$NYstartHour)),function(x){
-	which(qdat.hourly$timestamp==as.POSIXlt(gdp.bd$NYstartHour[x],tz="America/New_York"))}))
-#do pm 5 hours from start of backdated GDP
-pm=5
-airdelay<-lapply(seq(1:length(aspm_time_idx)), function(x){
-	aspm[seq(aspm_time_idx[x]-pm,aspm_time_idx[x]+pm),]$AirDelay})
-
-qlength<-lapply(seq(1:length(qlength_time_idx)), function(x){
-	qdat.hourly[seq(qlength_time_idx[x]-pm,qlength_time_idx[x]+pm),]$qlength})
-#now melt these for easy plotting: L1 is the event id (recall there are 71 backdated gdp events)
-#the time variable ranges from -5 to +5, where time=0 is start of backdated gdp event
-library(reshape)
-ad<-melt.list(airdelay)
-ad$time<-rep(seq(-pm,pm),length(airdelay))
-#qlength data from Amy (in qdat.hourly) only goes until 8/31/2014 whereas
-#aspm data goes until 12/31/2014.  Thus only 66 backdated events in ql
-ql<-melt.list(qlength)
-ql$time<-rep(seq(-pm,pm),length(qlength))
-save(ad,file="~/NoBackup/code/nasa/src/causalInfFAA/data/AirDelayDynamicsPM5HoursAroundBackDatedGDP")
-save(ql,file="~/NoBackup/code/nasa/src/causalInfFAA/data/QueueLengthDynamicsPM5HoursAroundBackDatedGDP")
-```
-
-```{r,echo=FALSE,fig.width=6,fig.height=5}
-load("~/NoBackup/code/nasa/src/causalInfFAA/data/AirDelayDynamicsPM5HoursAroundBackDatedGDP")
-load("~/NoBackup/code/nasa/src/causalInfFAA/data/QueueLengthDynamicsPM5HoursAroundBackDatedGDP")
-library(ggplot2)
-
-#plot the first 4 events for queue length and airborne delay dynamics
-ggplot(ql[ql$L1<5,],aes(x=time,y=value,group=L1))+geom_smooth(alpha=0.01, size=.5,aes(colour=factor(L1))) + geom_point(aes(colour=factor(L1)))+labs(title="Dynamics of Arrival Queue Around a backdated GDP",x="Relative time [hours]",y="Number in Arrival Queue")
-ggplot(ad[ad$L1<5,],aes(x=time,y=value,group=L1))+geom_smooth(alpha=0.01, size=.5,aes(colour=factor(L1))) + geom_point(aes(colour=factor(L1)))+labs(title="Dynamics of Airborne Delay Around a backdated GDP",x="Relative time [hours]",y="Airborne Delay [minutes]")
-
-```
-
-Data manipulation and alignment
-=======================================================
+#A note about data sets and alignment
 * Analysis requires hourly TAF, ASPM (various modules), TFMI  
 * ASPM has hourly values for average airborne delay
-  * Queue length from TAER module of ASPM is 15-min based
-  * 
-* TAF is (nominally) generated for 0,6,12,18h
+    * Queue length from TAER module of ASPM is 15-min based
+    * Arrival Demand and Effective Arrivals (number of serviced aircraft)
+* TAF is (nominally) generated for 0,6,12,18h 
 * TFMI is event based 
-  * GDP initations (root advisories) can be modified
-  * Must follow the sub time-series to get start/stop times
+    * GDP initations (root advisories) can be modified
+    * Must follow the sub time-series to get actual start/stop times
+    * End-result is 'status' of each hour (GDP or No-GDP)
+
+#Airborne delay as an outcome
+
+```{r abdelay_hist,warning=FALSE, echo=FALSE,fig.height=3,fig.width=4,fig.align='center'}
+load("~/NoBackup/code/nasa/src/causalInfFAA/data/JFK_backdatedGDPOnly_twang_withASPMweather_noNA_timestamped_data.Rdata")
+#show histogram difference between qlength when gdp and not
+abdelay_hist<-ggplot(twang.complete.bd,aes(AirDelay_JFK)) + geom_histogram(binwidth=1) +  xlim(c(-20,20)) +facet_grid(status ~ .,scales = "free_y",labeller = label_both)
+abdelay_hist+labs(title="Hourly Avg. Airborne Delay and GDP status")
+```
 
 
+#Arrival Queue Length - Predictor or Outcome?
+```{r queue_length,warning=FALSE, echo=FALSE,fig.height=3,fig.width=4,fig.align='center'}
 
-Feature Relevance
-=======================================================
+#show histogram difference between qlength when gdp and not
+qlen_hist<-ggplot(twang.complete.bd,aes(qlength)) + geom_histogram(binwidth=5) +facet_grid(status ~ .,scales = "free_y",labeller = label_both)
+qlen_hist+labs(title="Arrival Queue Length at JFK based on GDP status")
+```
 
-```{r, echo=FALSE}
+#A possbily relevant feature: Number of Arrivals 
+```{r num_arrivals,warning=FALSE, echo=FALSE,fig.height=3,fig.width=4,fig.align='center'}
+#show histogram difference between Num arrivals when gdp and not
+ggplot(twang.complete.bd,aes(A_JFK)) + geom_histogram(binwidth=1) +facet_grid(status ~ .,scales = "free_y",labeller = label_both) + labs(title="Number of Arrivals at JFK based on GDP status")
+```
+
+#Relevant Features
+Strongest predictor of GDP is Queue Length, followed by number of arrivals
+```{r feat_rel,warning=FALSE, echo=FALSE,fig.height=3,fig.width=5,fig.align='center'}
 #do some feature relevance analysis with xgboost
 library(xgboost)
+load("~/NoBackup/code/nasa/src/causalInfFAA/data/JFK_twang_withASPMweather_noNA_timestamped_data.Rdata")
+#FIRST include qlength as a feature
 #get rid of timestamp; hours; AirDelay; status
 xgbdat<-twang.complete[,c(-1,-9,-11,-13)] 
 dtrain <- xgb.DMatrix(data = as.matrix(xgbdat),label=twang.complete$status)
-```
-
-Covariate Balancing with PS
-=======================================================
-
-```{r, echo=FALSE}
-#load dataset for JFK: covs + outcome (air delay) + treatment status (status)
-library(twang)
-load("JFK_twang_withASPMweather_noNA_timestamped_data.Rdata")
+#create the model
+model <- xgboost(data = dtrain, nrounds = 20, objective = "binary:logistic",verbose=0)
+imp_matrix <- xgb.importance(feature_names = colnames(xgbdat), model = model)
+xgb.plot.importance(importance_matrix = imp_matrix)
 
 ```
+
+#Relevant Features 2
+```{r feat_rel_noQueue,warning=FALSE, echo=FALSE, fig.height=3,fig.width=5,fig.align='center'}
+#NOW get rid of qlength and recalculate feature importance
+xgbdat<-twang.complete[,c(-1,-9,-11,-12,-13)] 
+dtrain <- xgb.DMatrix(data = as.matrix(xgbdat),label=twang.complete$status)
+#create the model
+model <- xgboost(data = dtrain, nrounds = 20, objective = "binary:logistic",verbose=0)
+#generate importance matrix
+imp_matrix <- xgb.importance(feature_names = colnames(xgbdat), model = model)
+xgb.plot.importance(importance_matrix = imp_matrix)
+```
+
+
