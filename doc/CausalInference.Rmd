@@ -95,24 +95,6 @@ bd<-ggplot(gdponlyroot,aes(as.numeric(startTime-sendTime),backdated=TRUE))
 bd + xlim(c(-40,0)) + geom_histogram(binwidth=1) + labs(title="Distribution of BackDated GDP Root Advisories",x="Start-Send time in Minutes")
 ```
 
-#Airborne Delay and Arrival Queue dynamics
-* What effect does a GDP have on these potential outcomes?
-* Consider +/-5 hours centered on backdated GDP events
-```{r,echo=FALSE,fig.width=3,fig.height=2}
-load("~/NoBackup/code/nasa/src/causalInfFAA/data/AirDelayDynamicsPM5HoursAroundBackDatedGDP")
-load("~/NoBackup/code/nasa/src/causalInfFAA/data/QueueLengthDynamicsPM5HoursAroundBackDatedGDP")
-library(ggplot2)
-
-#plot the first 4 events for queue length and airborne delay dynamics
-ggplot(ql[ql$L1<5,],aes(x=time,y=value,group=L1))+geom_smooth(alpha=0.01, size=.5,aes(colour=factor(L1))) + geom_point(aes(colour=factor(L1)))+labs(title="Dynamics of Arrival Queue Around a backdated GDP",x="Relative time [hours]",y="Number in Arrival Queue")
-ggplot(ad[ad$L1<5,],aes(x=time,y=value,group=L1))+geom_smooth(alpha=0.01, size=.5,aes(colour=factor(L1))) + geom_point(aes(colour=factor(L1)))+labs(title="Dynamics of Airborne Delay Around a backdated GDP",x="Relative time [hours]",y="Airborne Delay [minutes]")
-
-```
-* Both have delayed (offset) decrease after initiation of GDP 
-* Consider outcomes at multiple offsets from treatment (GDP) initiation
-
-
-
 #A note about data sets and alignment
 * Analysis requires hourly TAF, ASPM (various modules), TFMI  
 * ASPM has hourly values for average airborne delay
@@ -142,7 +124,7 @@ qlen_hist<-ggplot(twang.complete.bd,aes(qlength)) + geom_histogram(binwidth=5) +
 qlen_hist+labs(title="Arrival Queue Length at JFK based on GDP status")
 ```
 
-#A note about ASPM arrival counts and ``Queue Length""  
+#A note about ASPM arrival counts and ``Queue Length"  
 
 * There are two sets of arrival counts in ASPM: Hourly and Quarter-Hourly (from TAER module)
 * The TAER module provides: ARRDEMAND (expected arrival demand) and EFFARR (counts of wheels on ground)
@@ -153,7 +135,24 @@ qlen_hist+labs(title="Arrival Queue Length at JFK based on GDP status")
 ggplot(twang.complete.bd,aes(A_JFK)) + geom_histogram(binwidth=1) +facet_grid(status ~ .,scales = "free_y",labeller = label_both) + labs(title="Number of Arrivals at JFK based on GDP status")
 ```
 
-#Relevant Features
+#Airborne Delay and Arrival Queue dynamics
+* What effect does a GDP have on these potential outcomes?
+* Consider +/-5 hours centered on backdated GDP events
+```{r,echo=FALSE,fig.width=3,fig.height=2}
+load("~/NoBackup/code/nasa/src/causalInfFAA/data/AirDelayDynamicsPM5HoursAroundBackDatedGDP")
+load("~/NoBackup/code/nasa/src/causalInfFAA/data/QueueLengthDynamicsPM5HoursAroundBackDatedGDP")
+library(ggplot2)
+
+#plot the first 4 events for queue length and airborne delay dynamics
+ggplot(ql[ql$L1<5,],aes(x=time,y=value,group=L1))+geom_smooth(alpha=0.01, size=.5,aes(colour=factor(L1))) + geom_point(aes(colour=factor(L1)))+labs(title="Dynamics of Arrival Queue Around a backdated GDP",x="Relative time [hours]",y="Number in Arrival Queue")
+ggplot(ad[ad$L1<5,],aes(x=time,y=value,group=L1))+geom_smooth(alpha=0.01, size=.5,aes(colour=factor(L1))) + geom_point(aes(colour=factor(L1)))+labs(title="Dynamics of Airborne Delay Around a backdated GDP",x="Relative time [hours]",y="Airborne Delay [minutes]")
+
+```
+* Both have delayed (offset) decrease after initiation of GDP 
+* Consider outcomes at multiple offsets from treatment (GDP) initiation
+
+
+#Feature relevance analysis for Propensity Score model
 Strongest predictor of GDP is Queue Length, followed by number of arrivals
 ```{r feat_rel,warning=FALSE, echo=FALSE,fig.height=3,fig.width=5,fig.align='center'}
 #do some feature relevance analysis with xgboost
@@ -182,4 +181,12 @@ imp_matrix <- xgb.importance(feature_names = colnames(xgbdat), model = model)
 xgb.plot.importance(importance_matrix = imp_matrix)
 ```
 
+
+#Is ql a strong predictor of forecasted GDP events too?
+
+#which component of ql (ARRDEMAND or EFFARR) is the strongest predictor?
+* let's include both in the model
+
+#A stochastic process model for EFFARR
+* cite heathrow
 
