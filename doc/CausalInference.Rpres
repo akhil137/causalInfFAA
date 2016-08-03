@@ -1,4 +1,3 @@
-#see summary.pdf in doc for other details
 Causal Inference
 ========================================================
 author: Akhil Shah
@@ -32,6 +31,19 @@ Recall original motivation
 * What outcome do we want to analyze as a result of applying or not-applying GDP?
   * Airborn delay
   * Arrival Queue length
+  
+Data manipulation and alignment
+=======================================================
+* Analysis requires hourly TAF, ASPM (various modules), TFMI  
+* ASPM has hourly values for average airborne delay
+  * Queue length from TAER module of ASPM is 15-min based
+  * Arrival Demand and Effective Arrivals (number of serviced aircraft)
+* TAF is (nominally) generated for 0,6,12,18h 
+* TFMI is event based 
+  * GDP initations (root advisories) can be modified
+  * Must follow the sub time-series to get actual start/stop times
+  * End-result is 'status' of each hour (GDP or No-GDP)
+
 
 GDP events: planned vs "backdated"
 ========================================================
@@ -55,8 +67,8 @@ gdp.ewr<-do.call(rbind,gdp.ewr.list)
 gdponly<-gdp.ewr[gdp.ewr$status=="GDP",]
 save(gdponly,file="~/NoBackup/code/nasa/src/causalInfFAA/data/JFKGDPOnlyEvents")
 ```
-JFK 2010-2014: 496 GDP root advisories; 71 were 'backdated' 
-* Large variance in time horizons for planned GDP, 
+- JFK 2010-2014: 496 GDP root advisories; 71 were 'backdated' 
+- Large variance in time horizons for planned GDP, 
 ```{r,echo=FALSE,fig.height=3,fig.width=4,fig.align='center'}
 load(file="~/NoBackup/code/nasa/src/causalInfFAA/data/JFKGDPOnlyEvents")
 #lets select only root adv*
@@ -156,7 +168,6 @@ Data manipulation and alignment
 
 Feature Relevance
 =======================================================
-as
 ```{r, echo=FALSE}
 #do some feature relevance analysis with xgboost
 library(xgboost)
@@ -167,9 +178,30 @@ xgbdat<-twang.complete[,c(-1,-9,-11,-13)]
 dtrain <- xgb.DMatrix(data = as.matrix(xgbdat),label=twang.complete$status)
 #create the model
 model <- xgboost(data = dtrain, nrounds = 20, objective = "binary:logistic")
+```
+
+
+Feature Relevance 2
+=======================================================
+```{r, echo=FALSE}
 #generate importance matrix
 imp_matrix <- xgb.importance(feature_names = colnames(xgbdat), model = model)
 xgb.plot.importance(importance_matrix = imp_matrix)
+```
+
+Airborne delay as an outcome
+=======================================================
+```{r abdelay_hist, echo=FALSE,fig.height=3,fig.width=4,fig.align='center'}
+
+#show histogram difference between qlength when gdp and not
+abdelay_hist<-ggplot(twang.complete,aes(AirDelay_JFK)) + geom_histogram(binwidth=5) +facet_grid(status ~ .,scales = "free_y")
+abdelay_hist+labs(title="Distriubtions of Airborne Delay based on GDP status")
+```
+
+
+Outcomes
+=======================================================
+```{r, echo=FALSE,fig.height=3,fig.width=4,fig.align='center'}
 
 #show histogram difference between qlength when gdp and not
 qlen_hist<-ggplot(twang.complete,aes(qlength)) + geom_histogram(binwidth=5) +facet_grid(status ~ .,scales = "free_y")
@@ -177,8 +209,12 @@ qlen_hist+labs(title="Distriubtions of Queue Length based on GDP status")
 
 #show histogram difference between Num arrivals when gdp and not
 ggplot(twang.complete,aes(A_JFK)) + geom_histogram(binwidth=1) +facet_grid(status ~ .,scales = "free_y") + labs(title="Distriubtions of Arrival count at JFK based on GDP status")
+```
 
 
+Feature Relevance 2
+=======================================================
+```{r, echo=FALSE,fig.height=3,fig.width=4,fig.align='center'}
 #NOW get rid of qlength and recalculate feature importance
 xgbdat<-twang.complete[,c(-1,-9,-11,-12,-13)] 
 dtrain <- xgb.DMatrix(data = as.matrix(xgbdat),label=twang.complete$status)
@@ -391,3 +427,5 @@ design.jfk<-svydesign(ids=~1, weights=~w, data=twang.complete.bd)
 glm1<-svyglm(AirDelay_JFK ~ status, design=design.jfk)
 summary(glm1)
 
+#std lin reg
+glm_standard<-lm(AirDelay_JFK ~ status + qlength + A_JFK + windspeed + visibility + snow + TS + fog + rain + crosswinds + vis_ASPM + temp_ASPM + windspeed_ASPM + windangle_ASPM + ceil_ASPM + crosswind_ASPM, data=twang.complete.bd)
