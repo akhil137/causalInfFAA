@@ -1,4 +1,10 @@
-
+#The qtr-hour file below most likely comes from teh ASPM data download module
+#http://aspmhelp.faa.gov/index.php/ASPM_Data_Download:_Definitions_of_Variables
+#/Users/ashah/NoBackup/code/nasa/data/fromAmy/JFK 201405-201408.csv
+#after reading in that file as 'hansen', let's parse the following relevant columns
+#note the fileds are defined in 'ASPM Airport Quarter Hour Data Dictionary'
+#aspmdetdwn<-hansen[,c(2,3,4,5,6,7,55,56,57,44,46,49,50,62,64,66,68,69,70,71,72,73,74,75,77,79,81,83)]
+#Whereas, this file, also qtr-hour but less fields, may come from ASPM efficiency module?
 amy<-read.csv("../../data/fromAmy/JFK.csv")
 amy$timestamp<-strptime(paste(as.character(amy$YYYYMM),as.character(amy$DAY),as.character(amy$HOUR),sep=":"),format="%Y%m:%d:%H",tz="America/New_York")
 #amy<-amy[,c("timestamp","EFFARR","ARRDEMAND","CEILING","VISIBILITY","TEMP","WINDSPEED")]

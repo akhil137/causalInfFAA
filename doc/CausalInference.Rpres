@@ -211,6 +211,32 @@ qlen_hist+labs(title="Distriubtions of Queue Length based on GDP status")
 ggplot(twang.complete,aes(A_JFK)) + geom_histogram(binwidth=1) +facet_grid(status ~ .,scales = "free_y") + labs(title="Distriubtions of Arrival count at JFK based on GDP status")
 ```
 
+Only fraction of hourly arrivals have EDCT even under GDP
+=======================================================
+```{r, echo=FALSE,fig.height=3,fig.width=4,fig.align='center'}
+
+load("JFK_twang_withEDCTandASPMweather_noNA_timestamped_data.Rdata")
+
+ggplot(twang.edct,aes(Percent.EDCT)) + geom_histogram(binwidth=1) +facet_grid(status ~ .,scales = "free_y") + labs(title="Distriubtion of Fraction of Hourly Arrivals with EDCT at JFK based on GDP status")
+```
+But there are also 486/6519 hours with No-GDP status that still have arrivals with EDCT.
+nrow(twang.edct[twang.edct$status==0 & twang.edct$Arrival.With.EDCT>0,])
+summary(twang.edct[twang.edct$status==0 & twang.edct$Arrival.With.EDCT>0,]$Percent.EDCT)
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+   1.96    5.88   16.06   24.48   40.87   83.33 
+
+```{r, echo=FALSE,fig.height=3,fig.width=4,fig.align='center'}   
+ggplot(twang.edct[twang.edct$Percent.EDCT>0,],aes(x=as.factor(status),y=Percent.EDCT)) + geom_boxplot()  
+```
+
+So we really do need to consider 'treatment' as continous.
+What should the Treatment var be? Percent.EDCT or Avg.EDCT
+
+How does hourly Airborne Delay vary with  hourly Average EDCT (avgd over all arrivals)?
+=======================================================
+```{r, echo=FALSE,fig.height=3,fig.width=4,fig.align='center'}
+ggplot(twang.edct,aes(Avg.EDCT,AirDelay_JFK)) + geom_point()+ facet_grid(status ~ .,scales = "free_y") + labs(title="Hourly Air Delay vs. Hourly Avg EDCT of all Flights JFK based on GDP status")
+```
 
 Feature Relevance 2
 =======================================================
