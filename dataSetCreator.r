@@ -66,7 +66,36 @@ twang.complete$status<-twang.complete$status-1
 #checked with dates<-unique(as.Date(twang.complete$timestamp))
 save(twang.complete,file=paste(feature_dir,"JFK_twang_withASPMweather_noNA_timestamped_data.Rdata",sep=""))
 
+#add edct data
+edct<-read.csv("./data/aspmEDCTReport.csv")
+#the last rows are garbage (could cut out of csv also)
+edct<-edct[1:8136,]
+edct$timestamp<-strptime(paste(edct$Date,edct$Hour),"%m/%d/%y %H", tz="America/New_York")
+#better to use POSIXct for merging
+twang.complete$ts<-as.POSIXct(twang.complete$timestamp,tz="America/New_York")
+edct$ts<-as.POSIXct(edct$timestamp,tz="America/New_York")
+twang.edct<-merge(twang.complete,edct,by="ts",all.x=TRUE)
+#get rid of extraneous timestamp columns post merge
+twang.edct<-twang.edct[,c(-2,-30)]
+save(twang.edct,file=paste("./data/","JFK_twang_withEDCTandASPMweather_noNA_timestamped_data.Rdata",sep=""))
 
+#also added ARRDEMAND and EFFDEMAND from amy's data-set, saved as:
+save(twang.edct,file=paste("./data/","JFK_twang_withEDCTandASPMweather_noNA_timestamped_data.Rdata",sep=""))
+
+
+#BTS data
+#manually read in bts data as csv files and filter destination to e.g. JFK
+bts<-read.csv("~/Downloads/btsflightlevel/920137515_T_ONTIME.csv")
+bts.jfk<-bts[bts$DEST=="JFK",]
+#fix scheduled arrival timestamps to be full 24 hour clock
+bts.jfk$fixedCRSARRTIME<-ifelse(nchar(bts.jfk$CRS_ARR_TIME)==rep(3,length(bts.jfk$CRS_ARR_TIME)),paste("0",bts.jfk$CRS_ARR_TIME,sep=""),bts.jfk$CRS_ARR_TIME)
+bts.jfk$CRSARRTIME<-strptime(paste(bts.jfk$FL_DATE,bts.jfk$fixedCRSARRTIME),"%Y-%m-%d %H%M", tz="America/New_York")
+#create POSIX-lt timestamp based on scheduled arrivals; only keeping the hour!
+bts.jfk$ts<-strptime(paste(bts.jfk$FL_DATE,bts.jfk$fixedCRSARRTIME),"%Y-%m-%d %H", tz="America/New_York")
+#conver this to posixCT for easy merging
+bts.jfk$ts<-as.POSIXct(bts.jfk$ts,tz="America/New_York")
+#we only need releavnt columns (note with scheduled arrival time and the various deltas we can calc all else)
+bts.jfk.rel<-bts.jfk[,c("ts","CRSARRTIME","TAIL_NUM","ORIGIN","DEST","DEP_DELAY","TAXI_OUT","TAXI_IN","ARR_DELAY","AIR_TIME","CRS_ELAPSED_TIME","DISTANCE","CARRIER_DELAY","WEATHER_DELAY","SECURITY_DELAY","LATE_AIRCRAFT_DELAY")]
 
 #Example merge metar with aspm, so that perhaps later we can merge with twangdf above
 #merge with metar determining which rows survive and sort on timestamp
