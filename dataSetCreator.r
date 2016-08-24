@@ -95,7 +95,26 @@ bts.jfk$ts<-strptime(paste(bts.jfk$FL_DATE,bts.jfk$fixedCRSARRTIME),"%Y-%m-%d %H
 #conver this to posixCT for easy merging
 bts.jfk$ts<-as.POSIXct(bts.jfk$ts,tz="America/New_York")
 #we only need releavnt columns (note with scheduled arrival time and the various deltas we can calc all else)
-bts.jfk.rel<-bts.jfk[,c("ts","CRSARRTIME","TAIL_NUM","ORIGIN","DEST","DEP_DELAY","TAXI_OUT","TAXI_IN","ARR_DELAY","AIR_TIME","CRS_ELAPSED_TIME","DISTANCE","CARRIER_DELAY","WEATHER_DELAY","SECURITY_DELAY","LATE_AIRCRAFT_DELAY")]
+bts.jfk.rel<-bts.jfk[,c("ts","CRSARRTIME","TAIL_NUM",'UNIQUE_CARRIER', "ORIGIN","DEST","DEP_DELAY","TAXI_OUT","TAXI_IN","ARR_DELAY","AIR_TIME","CRS_ELAPSED_TIME","DISTANCE","CARRIER_DELAY","WEATHER_DELAY","NAS_DELAY","SECURITY_DELAY","LATE_AIRCRAFT_DELAY")]
+#add wheels on time to later merge with ASPM hourly data such as arrivals, edct, airborne delay
+bts.jfk.rel$WHEELS_ON<-bts.jfk.rel$CRSARRTIME+60*(bts.jfk.rel$ARR_DELAY-bts.jfk.rel$TAXI_IN)
+
+
+#merge with pretreat covariates (weather and scheduled arrivals)
+pretreat<-twang.edct.effarr[,c(1:8,10,13,14:19)]
+bts.jfk.rel.pretreat<-merge(bts.jfk.rel,pretreat,by="ts",all.x=TRUE)
+#only keep those that touched down
+bts.jfk.rel.pretreat.nona<-bts.jfk.rel.pretreat[!is.na(bts.jfk.rel.pretreat$WHEELS_ON),]
+save(bts.jfk.rel.pretreat.nona,file=paste("~/NoBackup/code/nasa/src/causalInfFAA/data/","JFK_twang_withBTSandASPMweather_noNA_timestamped_data.Rdata",sep=""))
+
+#let's keep the ones we think of as gdp flights
+bts.gdp<-bts.jfk.rel.pretreat.nona[(bts.jfk.rel.pretreat.nona$DEP_DELAY>0),]
+bts.gdp<-bts.gdp[bts.gdp$status==1,]
+
+#add unimpeded taxi times
+taxi<-read.csv("~/Downloads/unimpededtaxisubset.csv")
+#our bts is only for july 2014 so only keep that summer month season
+taxi<-taxi[taxi$Season==3,]
 
 #Example merge metar with aspm, so that perhaps later we can merge with twangdf above
 #merge with metar determining which rows survive and sort on timestamp
