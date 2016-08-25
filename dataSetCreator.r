@@ -88,24 +88,37 @@ save(twang.edct,file=paste("./data/","JFK_twang_withEDCTandASPMweather_noNA_time
 bts<-read.csv("~/Downloads/btsflightlevel/920137515_T_ONTIME.csv")
 bts.jfk<-bts[bts$DEST=="JFK",]
 #fix scheduled arrival timestamps to be full 24 hour clock
-bts.jfk$fixedCRSARRTIME<-ifelse(nchar(bts.jfk$CRS_ARR_TIME)==rep(3,length(bts.jfk$CRS_ARR_TIME)),paste("0",bts.jfk$CRS_ARR_TIME,sep=""),bts.jfk$CRS_ARR_TIME)
+#notice all leading zeros seem to be stripped, so five mins past midnight is "5"
+
+timeFix<-function(idx){
+	arrvTime=bts.jfk$CRS_ARR_TIME[idx]
+	ncharInArrvTime=nchar(arrvTime)
+	numZerosToPaste=4-ncharInArrvTime
+	ifelse(ncharInArrvTime<4,paste(paste(rep(0,numZerosToPaste),collapse=""),arrvTime,sep=""),
+		arrvTime)
+}
+
+bts.jfk$fixedCRSARRTIME<-unlist(sapply(1:nrow(bts.jfk),timeFix))
+
 bts.jfk$CRSARRTIME<-strptime(paste(bts.jfk$FL_DATE,bts.jfk$fixedCRSARRTIME),"%Y-%m-%d %H%M", tz="America/New_York")
 #create POSIX-lt timestamp based on scheduled arrivals; only keeping the hour!
 bts.jfk$ts<-strptime(paste(bts.jfk$FL_DATE,bts.jfk$fixedCRSARRTIME),"%Y-%m-%d %H", tz="America/New_York")
 #conver this to posixCT for easy merging
 bts.jfk$ts<-as.POSIXct(bts.jfk$ts,tz="America/New_York")
 #we only need releavnt columns (note with scheduled arrival time and the various deltas we can calc all else)
-bts.jfk.rel<-bts.jfk[,c("ts","CRSARRTIME","TAIL_NUM",'UNIQUE_CARRIER', "ORIGIN","DEST","DEP_DELAY","TAXI_OUT","TAXI_IN","ARR_DELAY","AIR_TIME","CRS_ELAPSED_TIME","DISTANCE","CARRIER_DELAY","WEATHER_DELAY","NAS_DELAY","SECURITY_DELAY","LATE_AIRCRAFT_DELAY")]
+#bts.jfk.rel<-bts.jfk[,c("ts","CRSARRTIME","TAIL_NUM",'UNIQUE_CARRIER', "ORIGIN","DEST","DEP_DELAY","TAXI_OUT","TAXI_IN","ARR_DELAY","AIR_TIME","CRS_ELAPSED_TIME","DISTANCE","CARRIER_DELAY","WEATHER_DELAY","NAS_DELAY","SECURITY_DELAY","LATE_AIRCRAFT_DELAY")]
+bts.jfk.rel<-bts.jfk[,c("ts","CRSARRTIME","TAIL_NUM",'UNIQUE_CARRIER', "ORIGIN","DEST","DEP_DELAY","TAXI_OUT","TAXI_IN","ARR_DELAY","AIR_TIME","CRS_ELAPSED_TIME","DISTANCE")]
 #add wheels on time to later merge with ASPM hourly data such as arrivals, edct, airborne delay
 bts.jfk.rel$WHEELS_ON<-bts.jfk.rel$CRSARRTIME+60*(bts.jfk.rel$ARR_DELAY-bts.jfk.rel$TAXI_IN)
-
+#only keep those that touched down
+bts.jfk.rel<-bts.jfk.rel[!is.na(bts.jfk.rel$WHEELS_ON),]
 
 #merge with pretreat covariates (weather and scheduled arrivals)
 pretreat<-twang.edct.effarr[,c(1:8,10,13,14:19)]
 bts.jfk.rel.pretreat<-merge(bts.jfk.rel,pretreat,by="ts",all.x=TRUE)
-#only keep those that touched down
-bts.jfk.rel.pretreat.nona<-bts.jfk.rel.pretreat[!is.na(bts.jfk.rel.pretreat$WHEELS_ON),]
-save(bts.jfk.rel.pretreat.nona,file=paste("~/NoBackup/code/nasa/src/causalInfFAA/data/","JFK_twang_withBTSandASPMweather_noNA_timestamped_data.Rdata",sep=""))
+#only keep complete cases
+bts.merged<-na.omit(bts.jfk.rel.pretreat)
+save(bts.merged,file=paste("~/NoBackup/code/nasa/src/causalInfFAA/data/","JFK_twang_withBTSandASPMweather_noNA_timestamped_data.Rdata",sep=""))
 
 #let's keep the ones we think of as gdp flights
 bts.gdp<-bts.jfk.rel.pretreat.nona[(bts.jfk.rel.pretreat.nona$DEP_DELAY>0),]

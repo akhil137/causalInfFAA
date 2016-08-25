@@ -1,6 +1,11 @@
+#GOAL: estimate airborne delay by computing 'nominal' airborne time
+#either subtract unimpeded taxi times from scheduled elapsed (block) time
+#or use 10th percentile (see Skaltas reference below) of actual airborned time
+#as nominal airborne time
+
 
 #get bts frame created by dataSetCreator.r
-df = bts.jfk.rel.pretreat.nona
+df = bts.merged
 #relevel
 df$DEST<-factor(df$DEST)
 df$UNIQUE_CARRIER<-factor(df$UNIQUE_CARRIER)
@@ -64,6 +69,7 @@ df$UnimpededTaxiOut<-ttout
 # 0.03391 0.08500 0.11390 0.14190 0.16820 0.44260      57 
 
 #compute 'unimpeded' or nominal airborne times (expected enroute times)
+#note however that the scheduled elapsed time includes a buffer
 unimpab<-df$CRS_ELAPSED_TIME-(df$UnimpededTaxiOut+df$UnimpededTaxiOut)
 
 #compute airborne delay 
@@ -87,3 +93,23 @@ abdelay<-df$AIR_TIME-unimpab
 #can plot abdelay dist as function of gdp status (many not actually be a gdp flight though)
 library(ggplot2)
 ggplot(df,aes(ABDelay)) + geom_histogram(binwidth=1) +facet_grid(status ~ .,scales = "free_y")
+
+
+#From the Skaltas thesis, determine buffer (schedule padding)
+#buffer = schduled block time - actual block time 
+#where block is elapsed time in BTS (e.g. taxi out + air time + taxi in)
+#nominal air time is defined as the 10th percentile of actual air time
+#These should be determined per carrier and per route (origin-dest) pair
+#For example let's try UAL from lax to jfk
+#we can see all posisbilities of carrier and orig-dest pairs via
+table(df$ORIGIN,df$UNIQUE_CARRIER)
+lax.ual<-df[df$UNIQUE_CARRIER=="UAL",]
+lax.ual<-lax.ual[lax.ual$ORIGIN=="LAX",]
+#observed, actual block time
+lax.ual$bt<-lax.ual$AIR_TIME+lax.ual$TAXI_OUT+lax.ual$TAXI_IN
+#nominal block time - notice these are all constants for a fixed carrier-route pair
+lax.ual$nbt<-lax.ual$UnimpededTaxiIn+lax.ual$UnimpededTaxiOut+quantile(lax.ual$AIR_TIME,0.1,names=FALSE)
+#The buffer is then
+lax.ual$buffer<-lax.ual$bt-lax.ual$nbt
+ggplot(lax.ual,aes(ABDelay+buffer)) + geom_histogram(binwidth=1) +facet_grid(status ~ .,scales = "free_y")
+#however we should really use a mean buffer time, but above is has sd ~ mean
