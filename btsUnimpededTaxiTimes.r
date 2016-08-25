@@ -113,3 +113,24 @@ lax.ual$nbt<-lax.ual$UnimpededTaxiIn+lax.ual$UnimpededTaxiOut+quantile(lax.ual$A
 lax.ual$buffer<-lax.ual$bt-lax.ual$nbt
 ggplot(lax.ual,aes(ABDelay+buffer)) + geom_histogram(binwidth=1) +facet_grid(status ~ .,scales = "free_y")
 #however we should really use a mean buffer time, but above is has sd ~ mean
+
+#For now let's just use the 10th percentile as nominal airborne time
+library(reshape)
+airtime<-df[,c("UNIQUE_CARRIER","ORIGIN","AIR_TIME")]
+mdat<-melt(airtime,id=c("UNIQUE_CARRIER","ORIGIN"))
+#get the 10th percentile for nominal ab time
+percentile=0.1 
+castAbt<-cast(mdat,UNIQUE_CARRIER + ORIGIN ~variable,function(x){quantile(x,percentile,names=FALSE)})
+
+nomAbTimes<-function(i){
+	#extract vars
+	carrier = as.character(df$UNIQUE_CARRIER[i])
+	orig = as.character(df$ORIGIN[i])
+	#only one destination, JFK, which we have, so all taxiIn times should exist
+	dest = as.character(df$DEST[i])
+	#average over years 
+	nomab = mean(castAbt[(castAbt$ORIGIN==orig) & (castAbt$UNIQUE_CARRIER==carrier),"AIR_TIME"])
+}
+
+#get taxi-times
+df$nomAbTimes<-sapply(1:nrow(df),nomAbTimes)
