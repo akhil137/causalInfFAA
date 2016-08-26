@@ -116,12 +116,12 @@ ggplot(lax.ual,aes(ABDelay+buffer)) + geom_histogram(binwidth=1) +facet_grid(sta
 
 #For now let's just use the 10th percentile as nominal airborne time
 library(reshape)
-airtime<-df[,c("UNIQUE_CARRIER","ORIGIN","AIR_TIME")]
-mdat<-melt(airtime,id=c("UNIQUE_CARRIER","ORIGIN"))
+airtime<-df[,c("UNIQUE_CARRIER","ORIGIN","AIR_TIME","status")]
+mdat<-melt(airtime,id=c("UNIQUE_CARRIER","ORIGIN","status"))
 #get the 10th percentile for nominal ab time
 percentile=0.1 
-castAbt<-cast(mdat,UNIQUE_CARRIER + ORIGIN ~variable,function(x){quantile(x,percentile,names=FALSE)})
-
+castAbt<-cast(mdat,UNIQUE_CARRIER + ORIGIN +status ~variable,function(x){quantile(x,percentile,names=FALSE)})
+castAbt<-castAbt[castAbt$status==0,]
 nomAbTimes<-function(i){
 	#extract vars
 	carrier = as.character(df$UNIQUE_CARRIER[i])
@@ -129,8 +129,11 @@ nomAbTimes<-function(i){
 	#only one destination, JFK, which we have, so all taxiIn times should exist
 	dest = as.character(df$DEST[i])
 	#average over years 
-	nomab = mean(castAbt[(castAbt$ORIGIN==orig) & (castAbt$UNIQUE_CARRIER==carrier),"AIR_TIME"])
+	nomab = castAbt[(castAbt$ORIGIN==orig) & (castAbt$UNIQUE_CARRIER==carrier),"AIR_TIME"]
 }
 
-#get taxi-times
+#get nominal AB times
 df$nomAbTimes<-sapply(1:nrow(df),nomAbTimes)
+
+#can also define a velocity
+df$Veloc<-df$DISTANCE/df$AIR_TIME

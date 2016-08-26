@@ -73,3 +73,29 @@ align=c("l","r","r","r","r"))
 
 
 #see plots of gbm iterations and balance plots
+
+#outcome analysis
+df.pretreat$cbps<-ps.cbps$weights
+df.pretreat$ABDelay<-df$AIR_TIME-df$nomAbTimes
+#outcomes for treatment and control before weighting with ATT
+ggplot(df.pretreat,aes(ABDelay)) + geom_histogram(binwidth=1) +facet_grid(status ~ .,scales = "free_y")
+
+
+library(survey)
+design.bts<-svydesign(ids=~1, weights=~cbps, data=df.pretreat)
+glm.simple<-svyglm(ABDelay ~ status, design=design.bts)
+
+#basic linreg
+glm.lm<-lm(ABDelay~ status + crosswind_ASPM + vis_ASPM + ceil_ASPM + windspeed_ASPM + 
+	A_JFK + DISTANCE + CRS_ELAPSED_TIME, data=df.pretreat)
+
+#doubly-robust
+glm.dr<-svyglm(ABDelay ~ status + crosswind_ASPM + vis_ASPM + ceil_ASPM + windspeed_ASPM + 
++ 	A_JFK + DISTANCE + CRS_ELAPSED_TIME, design=design.bts)
+
+#could also try outcome as Veloc above
+#can also try on a single route-carrier
+lax.aal<-df.pretreat[(df$UNIQUE_CARRIER=="AAL") & (df$ORIGIN=="LAX"),]
+design.bts<-svydesign(ids=~1, weights=~cbps, data=lax.aal)
+glm.simple<-svyglm(ABDelay ~ status, design=design.bts)
+summary(glm.simple)
