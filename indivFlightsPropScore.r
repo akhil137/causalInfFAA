@@ -142,3 +142,123 @@ df.q<-merge(df,edct.rel,by.x="ts_WHON",all.x=TRUE)
 #that would identify flights that actually recieved such
 
 ggplot(df.q,aes(Subset.Avg.EDCT)) + geom_histogram(binwidth=1) +facet_grid(status ~ .,scales = "free_y")
+
+
+#use 30min EDCT as cutoff for gdp flights
+flights.gdp<-df.q[df.q$status==1 & df.q$DEP_DELAY>30,]
+flights.nogdp<-df.q[df.q$status==0 & df.q$DEP_DELAY<=0,]
+flights.gdp$ABDelay<-flights.gdp$AIR_TIME-flights.gdp$nomAbTimes
+flights.nogdp$ABDelay<-flights.nogdp$AIR_TIME-flights.nogdp$nomAbTimes
+flights<-rbind(flights.gdp,flights.nogdp)
+
+#calculate AB delay using scheduled air time ~ CRS Elapsed time - Unimpeded TAxi times 
+schedAirTime<-(flights$CRS_ELAPSED_TIME-flights$UnimpededTaxiIn-flights$UnimpededTaxiOut)
+obsAirTime<-flights$AIR_TIME[!is.na(schedAirTime)]
+schedAirTime<-schedAirTime[!is.na(schedAirTime)]
+schedABD<-obsAirTime-schedAirTime
+summary(schedABD)
+#It's all negative!!  becaused of schedule padding
+#   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+#-52.350 -17.900 -10.750 -10.450  -3.987  79.300 
+#filter for pretreat covars for ps fitting
+flights.gdp.pretreat<-flights.gdp[,pretreatFeats]
+flights.nogdp.pretreat<-flights.nogdp[,pretreatFeats]
+flights.pretreat<-rbind(flights.gdp.pretreat,flights.nogdp.pretreat)
+ps.cbps<-CBPS(status ~ crosswind_ASPM + vis_ASPM + ceil_ASPM + windspeed_ASPM +
+  	 A_JFK + DISTANCE + CRS_ELAPSED_TIME, data=flights.pretreat)
+bal.cbps<-dx.wts(x=ps.cbps$weights,data=flights.pretreat,
+ 	vars=colnames(flights.pretreat)[c(-1,-6,-7,-11,-12)],treat.var="status",estimand="ATT")
+#pretty good balance after weighting
+bal.table(bal.cbps)
+#now do outcome analysis
+flights$cbps<-ps.cbps$weights
+library(survey)
+design.bts<-svydesign(ids=~1, weights=~cbps, data=flights)
+glm.simple<-svyglm(ABDelay*EFFARR/ARRDEMAND ~ status, design=design.bts)
+
+glm.lm<-lm(ABDelay*EFFARR/ARRDEMAND~ status + crosswind_ASPM + vis_ASPM + ceil_ASPM + windspeed_ASPM + 
+	A_JFK + DISTANCE + CRS_ELAPSED_TIME, data=flights)
+
+#a nice outcome metric! efficiency adjust abdelay :)
+summary(flights[flights$status==1,]$ABDelay*flights[flights$status==1,]$EFFARR/flights[flights$status==1,]$ARRDEMAND)
+summary(flights[flights$status==0,]$ABDelay*flights[flights$status==0,]$EFFARR/flights[flights$status==0,]$ARRDEMAND)
+
+
+#let's redo this individual flights analysis using data from ASPM module
+aspmFlight<-read.csv("/Users/ashah/NoBackup/code/nasa/data/aspmShah/aspmJFKIndivFlights.csv")
+aspmFlight$CRSARRTIME<-strptime(paste(aspmFlight$arrv.date,aspmFlight$arrv.hour),"%m/%d/%y %H", tz="America/New_York")
+save(aspmFlights,file="~/NoBackup/code/nasa/src/causalInfFAA/data/JFK_aspmIndivFlightsWithPretreat.Rdata")
+
+#overlap between 'status' from pretreat (NTML) and edct wheels off in aspm indiv flights
+#pretty good overlap
+table(aspmFlights[aspmFlights$EDCTWoff=="",]$status)
+#above results in small false positive (gdp when flight isn't)
+#    0     1 
+# 12359   169 
+table(aspmFlights[!aspmFlights$EDCTWoff=="",]$status)
+#above results in 1/8th false negatives (no gdp when flight is)
+#   0    1 
+# 512 4229 
+#summar of ab delay
+
+summary(aspmFlights[!aspmFlights$EDCTWoff=="",]$AirborneDiff)
+#    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+# -296.00   -5.00    3.00    2.09   10.00  437.00 
+summary(aspmFlights[aspmFlights$EDCTWoff=="",]$AirborneDiff)
+#     Min.  1st Qu.   Median     Mean  3rd Qu.     Max. 
+# -946.000   -7.000    0.000   -5.239    6.000  540.000 
+
+won<-strptime(paste(aspmFlight$actual.wheels.on),"%H:%M", tz="America/New_York")
+woff<-strptime(paste(aspmFlight$actual.wheels.off),"%H:%M", tz="America/New_York")
+#just use the correct data downloaded again
+if1<-read.csv("/Users/ashah/NoBackup/code/nasa/data/aspmShah/ASPMWithABDelay070114To071514.csv")
+if2<-read.csv("/Users/ashah/NoBackup/code/nasa/data/aspmShah/ASPMWithABDelay071614To073014.csv")
+indivFlights<-rbind(if1,if2)
+#get rid of NA cases
+#can inspect colwise NA counts using plyr
+#library(plyr)
+#nmissing<-function(x) sum(is.na(x))
+#colwise(nmissing)(indivFlights)
+aspmComp<-indivFlights[!is.na(indivFlights$DepHour),]
+#add arrival hour
+aspmComp$ts<-strptime(paste(aspmComp$ArrvDate,aspmComp$ArrvHour),"%m/%d/%y %H", tz="America/New_York")
+#conver this to posixCT for easy merging
+aspmComp$ts<-as.POSIXct(aspmComp$ts,tz="America/New_York")
+#merge with TAF weather and EFFARR data from original weather+EFFARR sources
+load("~/NoBackup/code/nasa/src/causalInfFAA/data/JFK_pretreat.Rdata")
+aspmFlights<-merge(aspmComp,pretreat)
+#add treatment variable
+aspmFlights$treat=as.integer(!aspmFlights$EDCTWoff=="")
+#easy now to note confusion matrix with 'status' 
+table(aspmFlights$status,aspmFlights$treat)
+#estimate ps weights with CBPS
+ps.cbps.aspm<-CBPS(treat ~ crosswind_ASPM + vis_ASPM + ceil_ASPM + windspeed_ASPM +
+ 	 A_JFK + ETE, data=aspmFlights)
+#assess balance
+pretreatFeats<-c("treat","crosswind_ASPM", "vis_ASPM", "ceil_ASPM", "windspeed_ASPM", 
+	"A_JFK","ETE")
+library(twang)
+bal.cbps.aspm<-dx.wts(x=ps.cbps.aspm$weights,data=aspmFlights[,pretreatFeats],
+ 	vars=pretreatFeats[-1],treat.var="treat",estimand="ATT")
+#shows much better balance after weighting
+bal.table(bal.cbps.aspm)
+#outcome analysis
+aspmFlights$cbps<-ps.cbps.aspm$weights
+library(survey)
+design.aspm<-svydesign(ids=~1, weights=~cbps, data=aspmFlights)
+glm.simple.aspm<-svyglm(AirborneDiff*EFFARR/ARRDEMAND ~ treat, design=design.aspm)
+
+#results
+#w/ ps; mean diff of cap-adj abdelay is 3.9mins (w/o ps it is 0.5-(-5.5)~6mins)
+#w/o ps; mean diff of AirborneDiff is +2-(-5)~7mins
+#w/ ps; mean diff of same is 4.2mins
+
+#using ASPM definition of delay
+aspmFlights$ABDelay<-ifelse(aspmFlights$AirborneDiff>0,aspmFlights$AirborneDiff,0)
+#difference w/o ps is 2.6 mins while w/ ps is 1.2 mins 
+#weighted outcomes; below definition of weights works as checked below
+nt<-table(aspmFlights$treat)[["1"]]
+nc<-table(aspmFlights$treat)[["0"]]
+w<-aspmFlights$cbps*(aspmFlights$treat*nt + nc*(1-aspmFlights$treat))
+
+aspmFlights$WeightedABDelay<-w*aspmFlights$ABDelay

@@ -1,7 +1,7 @@
 ---
 title: "Causal Inference for ATM decision making"
-author: "Akhil Shah"
-date: "May 13, 2016"
+author: "Akhil Shah, RAND"
+date: "June 6, 2016"
 fontsize: 10pt
  
 output:
@@ -25,18 +25,6 @@ output:
 * Causal Inference methods can help estimate *unbiased* counterfactuals 
 * The modern methods of Causal Inference employ Machine Learning models
 
-# Causal Inference in a nutshell
-* Unbiased counterfactual estimation requires eliminating confounders
-    * confounder: covariate which affects treatment status (GDP or no-GDP) and outcome (Airborne delay)
-* Eliminate counfounding through propensity scores - probability to recive treatment (GDP) based on covariates (weather,traffic)
-* Estimation of propensity score (or log-odds of): Linear Logistic regression 
-
-$$\frac{P(GDP=1|X)}{1-P(GDP=1|X)}=F(X) = \beta X$$
-
-* GBM (using K trees) is often better (more flexible and robust) than linear logistic regression
-
-$$F(X) = \sum^K\beta_k g_k(X)$$ 
-
 #A first application: Backdated GDP events
 
 * Recall motivation: a situation (time window) where GDP is to be applied (e.g. inclimate weather)
@@ -46,6 +34,18 @@ $$F(X) = \sum^K\beta_k g_k(X)$$
     - Airborne delay
 * GDP events in response to current conditions may be easier to interpret
     - Less forecast uncertainties than planned GDP
+
+# Causal Inference applied to ATM
+* Unbiased counterfactual estimation requires eliminating confounders
+    * confounder: covariate (feature) which affects treatment status (GDP or no-GDP) and outcome (Airborne delay)
+* Eliminate counfounding through propensity scores - probability to recive treatment (GDP) based on covariates (weather,traffic)
+* Estimation of propensity score (or log-odds of): Linear Logistic regression 
+
+$$\frac{P(GDP=1|X)}{1-P(GDP=1|X)}=F(X) = \beta X$$
+
+* GBM (using K trees) is often better (more flexible and robust) than linear logistic regression
+
+$$F(X) = \sum^K\beta_k g_k(X)$$ 
 
 #GDP events: planned vs "backdated"
 
@@ -115,8 +115,20 @@ abdelay_hist<-ggplot(twang.complete.bd,aes(AirDelay_JFK)) + geom_histogram(binwi
 abdelay_hist+labs(title="Hourly Avg. Airborne Delay and GDP status")
 ```
 
+#Number of Arrivals 
+```{r num_arrivals,warning=FALSE, echo=FALSE,fig.height=3,fig.width=4,fig.align='center'}
+#show histogram difference between Num arrivals when gdp and not
+ggplot(twang.complete.bd,aes(A_JFK)) + geom_histogram(binwidth=1) +facet_grid(status ~ .,scales = "free_y",labeller = label_both) + labs(title="Number of Arrivals at JFK based on GDP status")
+```
 
-#Arrival Queue Length - Predictor or Outcome?
+#A note about ASPM arrival counts and ``Queue Length"  
+* ASPM provides quarter-hourly: ARRDEMAND (expected arrival demand) and EFFARR (counts of wheels on ground)
+* ARRDEMAND for a given flight is 1 between 'start of demand' and 'end of demand'
+* Start of Demand = Wheels off time + ETE - Ground Delay
+* Define Queue Length = ARRDEMAND - EFFARR 
+
+
+#Arrival Queue Length
 ```{r queue_length,warning=FALSE, echo=FALSE,fig.height=3,fig.width=4,fig.align='center'}
 
 #show histogram difference between qlength when gdp and not
@@ -124,30 +136,24 @@ qlen_hist<-ggplot(twang.complete.bd,aes(qlength)) + geom_histogram(binwidth=5) +
 qlen_hist+labs(title="Arrival Queue Length at JFK based on GDP status")
 ```
 
-#A note about ASPM arrival counts and ``Queue Length"  
 
-* There are two sets of arrival counts in ASPM: Hourly and Quarter-Hourly (from TAER module)
-* The TAER module provides: ARRDEMAND (expected arrival demand) and EFFARR (counts of wheels on ground)
-* The hourly arrivals counts are highly correlated with EFFARR
-* We define Queue Length = ARRDEMAND - EFFARR and aggregate these quarter hour counts of ``unserved" aircraft up to the hour
-```{r num_arrivals,warning=FALSE, echo=FALSE,fig.height=3,fig.width=4,fig.align='center'}
-#show histogram difference between Num arrivals when gdp and not
-ggplot(twang.complete.bd,aes(A_JFK)) + geom_histogram(binwidth=1) +facet_grid(status ~ .,scales = "free_y",labeller = label_both) + labs(title="Number of Arrivals at JFK based on GDP status")
-```
+
 
 #Airborne Delay and Arrival Queue dynamics
 * What effect does a GDP have on these potential outcomes?
 * Consider +/-5 hours centered on backdated GDP events
-```{r,echo=FALSE,fig.width=3,fig.height=2}
+
+```{r,echo=FALSE,fig.width=2,fig.height=2}
 load("~/NoBackup/code/nasa/src/causalInfFAA/data/AirDelayDynamicsPM5HoursAroundBackDatedGDP")
 load("~/NoBackup/code/nasa/src/causalInfFAA/data/QueueLengthDynamicsPM5HoursAroundBackDatedGDP")
 library(ggplot2)
 
 #plot the first 4 events for queue length and airborne delay dynamics
-ggplot(ql[ql$L1<5,],aes(x=time,y=value,group=L1))+geom_smooth(alpha=0.01, size=.5,aes(colour=factor(L1))) + geom_point(aes(colour=factor(L1)))+labs(title="Dynamics of Arrival Queue Around a backdated GDP",x="Relative time [hours]",y="Number in Arrival Queue")
-ggplot(ad[ad$L1<5,],aes(x=time,y=value,group=L1))+geom_smooth(alpha=0.01, size=.5,aes(colour=factor(L1))) + geom_point(aes(colour=factor(L1)))+labs(title="Dynamics of Airborne Delay Around a backdated GDP",x="Relative time [hours]",y="Airborne Delay [minutes]")
+ggplot(ql[ql$L1<5,],aes(x=time,y=value,group=L1))+geom_smooth(alpha=0.01, size=.5,aes(colour=factor(L1))) + geom_point(aes(colour=factor(L1)))+labs(title="Arrival Queue",x="Relative time [hours]",y="Number in Arrival Queue")+ theme(plot.title = element_text(size=8),axis.title = element_text(size = 6),legend.position="none")
+ggplot(ad[ad$L1<5,],aes(x=time,y=value,group=L1))+geom_smooth(alpha=0.01, size=.5,aes(colour=factor(L1))) + geom_point(aes(colour=factor(L1)))+labs(title="Airborne Delay",x="Relative time [hours]",y="Airborne Delay [minutes]")+ theme(plot.title = element_text(size=8),axis.title = element_text(size = 6),legend.position="none")
 
 ```
+
 * Both have delayed (offset) decrease after initiation of GDP 
 * Consider outcomes at multiple offsets from treatment (GDP) initiation
 
@@ -169,24 +175,22 @@ xgb.plot.importance(importance_matrix = imp_matrix)
 
 ```
 
-#Relevant Features 2
-```{r feat_rel_noQueue,warning=FALSE, echo=FALSE, fig.height=3,fig.width=5,fig.align='center'}
-#NOW get rid of qlength and recalculate feature importance
-xgbdat<-twang.complete[,c(-1,-9,-11,-12,-13)] 
-dtrain <- xgb.DMatrix(data = as.matrix(xgbdat),label=twang.complete$status)
-#create the model
-model <- xgboost(data = dtrain, nrounds = 20, objective = "binary:logistic",verbose=0)
-#generate importance matrix
-imp_matrix <- xgb.importance(feature_names = colnames(xgbdat), model = model)
-xgb.plot.importance(importance_matrix = imp_matrix)
-```
+#Covariate Balance
+* Unbiased estimation of GDP impact on Airborne Delay requires 'balance' between cases with and w/o GDP
+* Propensity score weighting (IPTW) can help achieve that balance
+* Balance metrics can use various statistical measures such as KS (ECDF closeness)
+* If covariate balance is achieved, simple reggression enables outcome analysis
+$$E(\tau_{Airborne})= \beta_0 + \beta_1 I_{GDP}$$
+* \emph{But need to account for dynamics} and time-lag in effect
+$$E(\tau_{Airborne}[n])= \beta_0 + \beta_1 I_{GDP}[n-k]$$
 
 
-#Is ql a strong predictor of forecasted GDP events too?
 
-#which component of ql (ARRDEMAND or EFFARR) is the strongest predictor?
-* let's include both in the model
-
-#A stochastic process model for EFFARR
-* cite heathrow
-
+#Next steps in Analysis
+* Understand Airborne Delay distribution through flight level data
+  * May enable fitting Queueing models (PRSA; Caccavale et. al.)
+* Analyze various lags for balanced outcome analysis
+* Aside which may help: employ newly found covariate balancing techniques
+  
+  
+  

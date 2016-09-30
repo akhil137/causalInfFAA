@@ -98,6 +98,7 @@ ggplot(df,aes(ABDelay)) + geom_histogram(binwidth=1) +facet_grid(status ~ .,scal
 #From the Skaltas thesis, determine buffer (schedule padding)
 #buffer = schduled block time - actual block time 
 #where block is elapsed time in BTS (e.g. taxi out + air time + taxi in)
+#Note however that schedule padding makes more sense to be schedule time - nominal block time
 #nominal air time is defined as the 10th percentile of actual air time
 #These should be determined per carrier and per route (origin-dest) pair
 #For example let's try UAL from lax to jfk
@@ -109,10 +110,11 @@ lax.ual<-lax.ual[lax.ual$ORIGIN=="LAX",]
 lax.ual$bt<-lax.ual$AIR_TIME+lax.ual$TAXI_OUT+lax.ual$TAXI_IN
 #nominal block time - notice these are all constants for a fixed carrier-route pair
 lax.ual$nbt<-lax.ual$UnimpededTaxiIn+lax.ual$UnimpededTaxiOut+quantile(lax.ual$AIR_TIME,0.1,names=FALSE)
-#The buffer is then
-lax.ual$buffer<-lax.ual$bt-lax.ual$nbt
+#The buffer is then according to Skaltas, but we'll define it later to be vs nbt
+lax.ual$buffer<-lax.ual$CRS_ELAPSED_TIME-lax.ual$bt
 ggplot(lax.ual,aes(ABDelay+buffer)) + geom_histogram(binwidth=1) +facet_grid(status ~ .,scales = "free_y")
-#however we should really use a mean buffer time, but above is has sd ~ mean
+
+
 
 #For now let's just use the 10th percentile as nominal airborne time
 library(reshape)
@@ -134,6 +136,10 @@ nomAbTimes<-function(i){
 
 #get nominal AB times
 df$nomAbTimes<-sapply(1:nrow(df),nomAbTimes)
+
+#Since we're not using nbt to compute buffer, do the computation for the entire frame
+df$nbt<-df$UnimpededTaxiIn+df$UnimpededTaxiOut+df$nomAbTimes
+df$buffer<-df$CRS_ELAPSED_TIME-df$nbt
 
 #can also define a velocity
 df$Veloc<-df$DISTANCE/df$AIR_TIME

@@ -80,7 +80,7 @@ twang.edct<-twang.edct[,c(-2,-30)]
 save(twang.edct,file=paste("./data/","JFK_twang_withEDCTandASPMweather_noNA_timestamped_data.Rdata",sep=""))
 
 #also added ARRDEMAND and EFFDEMAND from amy's data-set, saved as:
-save(twang.edct,file=paste("./data/","JFK_twang_withEDCTandASPMweather_noNA_timestamped_data.Rdata",sep=""))
+#("./data/","JFK_pretreat.Rdata",sep=""))
 
 
 #BTS data
