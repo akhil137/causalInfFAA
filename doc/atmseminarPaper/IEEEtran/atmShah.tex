@@ -59,7 +59,7 @@
 % manually specify the path to it like:
 % \documentclass[conference]{../sty/IEEEtran}
 
-
+\IEEEoverridecommandlockouts
 
 
 
@@ -310,7 +310,7 @@
 
 % correct bad hyphenation here
 \hyphenation{op-tical net-works semi-conduc-tor}
-
+ 
 
 \begin{document}
 %
@@ -369,7 +369,7 @@ Email: ashah@rand.org}
 % As a general rule, do not put math, special symbols or citations
 % in the abstract
 \begin{abstract}
-We propose that techniques from Causal Inference can be used to statistically estimate counterfactual outcomes, by definition never observable, of Traffic Flow Management Initiatives (TFMI), as a novel means to improve Air Traffic Management (ATM) performance assessment.  Specifically, we apply the method of Propensity Scores to estimate the average counterfactual outcome, the unobservable airborne delay, of not applying a Ground Delay Program (GDP) to flights that were in-fact delayed under a GDP.   In addition to summarizing the concepts of Causal Inference and Propensity scores for an ATM audience, we empirically demonstrate the propensity score weighting method to estimate counterfactual airborne delay on an hourly dataset of GDP at JFK spanning eleven months.  The estimated propensity score model allows us to weight weather and traffic features to properly compare airborne delay experienced between flights subject to a GDP and those which were not and thereby derive a statistical estimate of the counterfactual outcome.  Future extensions of our proof-of-concept application of causal inference to ATM are also discussed.
+We propose that the Rubin potential outcomes framework of causal inference can be used to statistically estimate counterfactuals, by definition never observable, of Traffic Flow Management Initiatives (TFMI), as a novel means of quantifying performance Air Traffic Management (ATM) actions, despite confounding factors.  Specifically, we apply the method of Propensity Scores to estimate the average counterfactual  airborne delay, of not applying a Ground Delay Program (GDP) during hours when in-fact such a GDP was in force, using an eleven month span of hourly weather, traffic, and delay data at JFK.   Our introduction summarizes the concepts of causal inference required for our analysis, which we leverage to offer suggestions to improve and extend our initial analysis by the ATM research community.  Technical details are further covered in an appendix.
 \end{abstract}
 
 % no keywords
@@ -422,7 +422,7 @@ Alternatively one can use techniques that don't directly model the dynamics of w
 \subsection{Outline}
 In this report we will examine another approach, Causal Inference, to generate counterfactual estimates, which can additionally quantify and reduce confounding, in order to attribute effectiveness of interventions (like TFMI) in terms of relevant outcomes. ausal Inference actually comprises several statistical methods, including propensity scores \cite{austin2011tutorial}, which we will specifically employ for counterfactual estimation to evaluate TFMI impact on system outcomes in the presence of confounding factors such as weather and demand.
 
-Our initial examination of airborne delay under a GDP is the simplest application of Causal Inference, using hourly data as the unit of analysis, with binary treatment assignment (GDP or no GDP).  In our conclusions, we offer the ATM research community various possible extensions of our initial application of Causal Inference. We will briefly discuss more sophsiticated possibilities employing other units of analysis, such as individual flights, multiple discrete treatments for GDP across multiple airports, and continuous treatment variables such as the amount of ground delay.  We will also articulate the various challenges which accompany such an undertaking.  
+Our initial examination of airborne delay under a GDP is the simplest application of Causal Inference, using hourly data as the unit of analysis, with binary treatment assignment (GDP or no GDP).  In our conclusions, we offer the ATM research community various possible extensions of our initial application of Causal Inference. We will briefly discuss more sophsiticated possibilities employing other units of analysis, such as individual flights, multiple discrete treatments for GDP across multiple airports, and continuous treatment variables such as the amount of ground delay.  We will also articulate the various challenges which accompany such an undertaking in our conclusion.  
 
 \section{Essential Concepts of Causal Inference}
 \subsection{Potential Outcomes}
@@ -487,7 +487,8 @@ qlength & 53.6 & 2.3 & 0.00 \\
 
 \subsection{Propensity Score Estimation}
 We then estimated the propensity scores $e_i \equiv Pr(Z_i=1|\mathbf{X}_i)$ for each time period $i$, using a Generalized Boosted Model (GBM) \cite{ridgeway2015toolkit} based on the weather and traffic covariates for each time period $\mathbf{X}_i$ described above.  Note that the process of generating a propensity score is very similar to supervised learning\footnote{More precisely, if the supervised learning method employed a soft-decision threshold, then the propensity score would be produced as an intermediate step by the classifier when estimating whether a given record should be assigned a label of GDP or ``no-GDP" based on its weather and traffic feature vector $\mathbf{X}_i$.} As in any model fitting procedure, one requires a criterion to pick the best model.  In casual inference, the best propensity score model is one that achieves the best balance between covariates and not necessarily the model which most accurately predicts treatment. The propensity scores from the optimal covariate balance model can then be used to generate weights $w_i \equiv 1/e_i$ to estimate the counterfactual airborne delay for a given forecast of weather and traffic, a procedure generally called Inverse Probability of Treatment Weighting (IPTW) \cite{austin2011introduction}.  See the appendix for further details about propensity score modeling and the IPTW methodology.  
-Using open source software \cite{ridgeway2015toolkit}, we estimated the best propensity score model and after applying the IPTW weights to the covariates, we notice an improvement in covariate balance as shown in table \ref{tab:balance}. Notice there are no longer any statistically significant difference between the treatment E(Y1$|$t=1) and weighted control group E(Y0$|$t=1), again using the notation of the potential outcomes framework.  As an additional check on the propensity score model, we graphically assess the overlap of estimated propensity scores between the treatment and control groups from the resulting model.  Note that zero overlap of propensity scores would mean that one cannot use the control groups outcomes to generate counterfactual outcomes for the treatment group (see appendix for further discussion) \cite{austin2011tutorial}. 
+
+Using open source software \cite{ridgeway2015toolkit}, we estimated the best propensity score model and after applying the IPTW weights to the covariates, we notice an improvement in covariate balance as shown in table \ref{tab:balance}. Notice there are no longer any statistically significant difference between the treatment E(Y1$|$t=1) and weighted control group E(Y0$|$t=1), again using the notation of the potential outcomes framework.  As an additional check on the propensity score model, we graphically assess the overlap of estimated propensity scores between the treatment and control groups from the resulting model.  Note that zero overlap of propensity scores would mean that one cannot use the control groups outcomes to generate counterfactual outcomes for the treatment group (see appendix for further discussion) \cite{austin2011tutorial}. 
 
 
 % latex table generated in R 3.1.0 by xtable 1.7-4 package
@@ -509,9 +510,20 @@ qlength & 53.6 & 44.5 & 0.09  \\
   crosswind\_ASPM & 8.6 & 8.6 & 0.73  \\ 
    \hline
 \end{tabular}
-\caption{Statistical estimation of the counterfactual conditions for the treatment group (GDP hours), \textbf{$E(Y0|t=1)$}, and improved covariate balance (larger p-values) using IPTW.} 
+\caption{Improved covariate balance using IPTW to estimate the counterfactual conditions $E(Y0|t=1)$.  Note that the large p-values indicate differences in means are not statistically significant.}
 \label{tab:balance}
 \end{table}
+
+
+\begin{figure}[!t]
+\centering
+\includegraphics[scale=0.25]{./figs/psoverlap}
+% where an .eps filename suffix will be assumed under latex, 
+% and a .pdf suffix will be assumed for pdflatex; or what has been declared
+% via \DeclareGraphicsExtensions.
+\caption{Overlap of the estimated propensity scores between the non-GDP hours or control group (1 on y-axis) and the GDP hours treatment group (2 on the y-axis).  There is non-zero overlap as required for counterfactual estimation, and in particular there are hours in the control group that have propensity scores similar to the treatment group, implying similar weather and traffic covariates, and thus will be weighted more greatly by IPTW for estimating the counterfactual.  The subplots represent two different propensity score models fit with different criteria for optimal covariate balance (see appendix).}
+\label{psoverlap}
+\end{figure}
  
 \subsection{Outcome Analysis}
 As we have determined that our propensity score model leads to greater covariate balance as show in table \ref{tab:balance}, we can continue onwards to analyze the effect of treatment (GDP) on the outcome (airborne holding delay). Since the two groups are now balanced, the situation is similar to a RCT, and one can linearly regress the outcome simply on an indicator variable for treatment. Note that computationally one uses weighted linear regression with IPTW weights computed from the previously fitted propensity score models \cite{ridgeway2015toolkit}. After using this procedure we estimate the ATT, E(Y1$|$t=1)-E(Y1$|$t=0), to be $-1.4$ minutes.  In other words, had a GDP not been applied to the hours at JFK when it in fact was, the hourly average airborne delay would increase by 1.4 minutes (with a standard error of the same magnitude).  Although consistent with the common understanding that GDP reduces airborne delay, our results also indicate this difference is not statistically significant.  To further analyze this results, one can enlarge the sample size (recall we focused only on backdated GDP to avoid weather forecast uncertainty), but should also consider the possibility that GDP affected flights may receive additional en route airborne delay from additional TFMI \cite{bilimoria2016analysis}. 
@@ -559,7 +571,7 @@ Even in our simplified setting of binary treatments, there are considerations th
 There also several possible extensions of our initial application of causal inference framework and methodology to ATM.  One is to simply consider how such a framework may apply to other TFMI besides GDP, using the language of treatment, outcomes, and propensity score analysis. Further extensions to the GDP context could include hourly analysis of the entire New York metro, using weather covariates from all airports simultaneously in multi-valued (but not continuous) treatment setting, where treatment corresponds to a categorical variable indicating GDP absence or presence at each of the major airports.  Another extension is to consider continuous valued treatments by explicitly considering the length of the ground-delay as the treatment variable, and estimating what in statistics is called the "dose-response curve"\cite{fong2017covariate}, with airborne delay playing the role of the response.    
 
 
-
+\section{Biography}  
 
 
 
@@ -706,9 +718,7 @@ As explained in \cite{mccaffrey2013tutorial}, there are several reasons why prop
 \section*{Acknowledgment}
 
 
-The authors would like to thank...
-
-
+The author would like to thank Heather Arneson, Paul Lee, Anthony Evans, and Karl Bilimoria of NASA Ames for useful correspondence and feedback.  We also thank our colleagues Matthew Cefalu and Beth Ann Griffin of the RAND Center for Causal Inference for fruitful discussions.  In addition we thank Kenneth Kuhn, Christopher Skeels, and Kyle Murray for collaboration on related research.
 
 
 
@@ -741,6 +751,11 @@ The authors would like to thank...
 %  0.5em minus 0.4em\relax Harlow, England: Addison-Wesley, 1999.
 %
 %\end{thebibliography}
+\vspace*{-2\baselineskip}
+\begin{IEEEbiographynophoto}{Akhil Shah}
+
+is a Senior Engineer with the RAND Corporation where he develops machine learning and statical methodology for air-traffic and cybersecurity related research problems.  He received his PhD in Theoretical High Energy Physics and M.S. in Electrical Engineering from UCLA.  His previous research involved communication system design and analysis for both wireless and optical applications.  
+\end{IEEEbiographynophoto}
 
 
 
