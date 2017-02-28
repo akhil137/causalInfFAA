@@ -1,17 +1,9 @@
-#We used the mozilla firebug extension to capture curl, post , and headers of 
-#a saved report (e.g. 'minSetFlights') for a particular 
-#aspm module (e.g. indiv flights).
+#A scraper for the FAA's ASPM site 
 
-#Various files were use to extract/verify the request; curl is easiest
-#Files; Description
-#postParamsIndivFlights.txt; Copied from Firebug
-#postHeadersIndivFlights.txt; has cookie
-#curlInivFlights.txt; can be used to create requests.post
-#					 with http://curl.trillworks.com/
-#
-#Note: copied curl only has post parameters that are non-empty (postParams has all)
-
-#From above curl to requests website by trillworks
+#We used the mozilla firebug extension to capture curl, post,
+#and headers of a manual request.  This script then allows
+#modifying parameters such as timespan or airport to automate
+#the request process and parse the resulting HTML into a CSV.
 
 import datetime
 import requests
@@ -68,18 +60,15 @@ q={'MyReportName': 'minSetFlights', 'ahrfrom': '??', 'ahrto': '??',
  'usclass': '?'}
 
  #let's generate dates string
+ #ASPM limits request size; roughly 14 days fit 
+ #within that limit for this particular request type
 
 def gen_dates_string(base, numdays=14, fmt='%Y%m%d'):
-    "return comma seperated string of dates"
+    "returns comma seperated string of dates"
     dates_list = [base + datetime.timedelta(days=x) for x in range(0, numdays)]
     datesString = ','.join([a.strftime(fmt) for a in dates_list])
 
     return datesString
-
-
-
-
-
 
 
 #airport for 'line' value
@@ -132,17 +121,18 @@ f.write(r.content)
 f.close()
 
 
-#finally
+#finally post the request
 r = requests.post('https://aspm.faa.gov/apm/sys/apm-server-x.asp', 
 	headers=headers, cookies=cookies, data=q)
 
 
-#parsing with bs
+#parsing with beautifulsoup
 
 #s=BeautifulSoup(r.content)
 s=BeautifulSoup(open("test.html"))
 t=s.find('table')
 rows=t.findAll('tr')
+
 #zeroth row is title, first column headers
 rows.pop(0)
 f=open('out.csv','wb')
