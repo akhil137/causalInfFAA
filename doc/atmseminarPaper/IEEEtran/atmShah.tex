@@ -420,7 +420,7 @@ Alternatively one can use techniques that don't directly model the dynamics of w
 
 
 \subsection{Outline}
-In this report we will examine another approach, Causal Inference, to generate counterfactual estimates, which can additionally quantify and reduce confounding, in order to attribute effectiveness of interventions (like TFMI) in terms of relevant outcomes. ausal Inference actually comprises several statistical methods, including propensity scores \cite{austin2011tutorial}, which we will specifically employ for counterfactual estimation to evaluate TFMI impact on system outcomes in the presence of confounding factors such as weather and demand.
+In this report we will examine another approach, Causal Inference, to generate counterfactual estimates, which can additionally quantify and reduce confounding, in order to attribute effectiveness of interventions (like TFMI) in terms of relevant outcomes. Causal Inference actually comprises several statistical methods, including propensity scores \cite{austin2011tutorial}, which we will specifically employ for counterfactual estimation to evaluate TFMI impact on system outcomes in the presence of confounding factors such as weather and demand.
 
 Our initial examination of airborne delay under a GDP is the simplest application of Causal Inference, using hourly data as the unit of analysis, with binary treatment assignment (GDP or no GDP).  In our conclusions, we offer the ATM research community various possible extensions of our initial application of Causal Inference. We will briefly discuss more sophsiticated possibilities employing other units of analysis, such as individual flights, multiple discrete treatments for GDP across multiple airports, and continuous treatment variables such as the amount of ground delay.  We will also articulate the various challenges which accompany such an undertaking in our conclusion.  
 
@@ -448,7 +448,7 @@ In one sense, our present analysis attempts to quantify this potential, yet unob
  
 
 \section{Data Analysis}
-Consider estimating the effectiveness of GDP applied at JFK in terms of one of its intended outcomes, reduction in airborne delay.  We choose the unit of analysis to be an hour block of time at the arrival airport and examine 11 months of hourly data between October 2013 and December 2014.  Recall our argument that 
+Consider estimating the effectiveness of GDP applied at JFK in terms of one of its intended outcomes, reduction in airborne delay.  We choose the unit of analysis to be an hour block of time at the arrival airport and examined 11 months of hourly data between October 2013 and December 2014. 
 
 To determine the exact hours when the treatment was applied, or equivalently, which hours GDP were in effect at JFK, we used the National Traffic Management Log (NTML), which records when GDP are announced, started, revised, and finally cancelled.  To discern which hours within the analysis period contained a GDP, we parsed the NTML data by arrival airport and tracked the start and stop times of GDP that were initiated.  Furthermore, as is common, some of these initiated GDP were modified, and thus required that we track each ``root advisory" (initial GDP) through its event history and note actual start and stop times rather than those announced initially.  We note that of the 117 GDP root advisories in our data, 18 of those were implemented with a start time that preceded the send time (time that the advisory was transmitted as recorded in the NTML dataset); namely these GDP were `backdated', and represent a reactive decision with a lag of 20 minutes or less.  In order to separate the effects of weather forecast uncertainty from our causal analysis, we will focus on these reactive decisions where weather is more likely certain, and thus only use the hours which had backdated GDP (treatment group) or no GDP (control group) in our causal analysis.  Our total sample size for the chosen unit of analysis of hour blocks in the eleven month period are thus: $N_T=84$, and the number of hours in the control group $N_C=6519$.  
 
@@ -571,7 +571,7 @@ Even in our simplified setting of binary treatments, there are considerations th
 There also several possible extensions of our initial application of causal inference framework and methodology to ATM.  One is to simply consider how such a framework may apply to other TFMI besides GDP, using the language of treatment, outcomes, and propensity score analysis. Further extensions to the GDP context could include hourly analysis of the entire New York metro, using weather covariates from all airports simultaneously in multi-valued (but not continuous) treatment setting, where treatment corresponds to a categorical variable indicating GDP absence or presence at each of the major airports.  Another extension is to consider continuous valued treatments by explicitly considering the length of the ground-delay as the treatment variable, and estimating what in statistics is called the "dose-response curve"\cite{fong2017covariate}, with airborne delay playing the role of the response.    
 
 
-\section{Biography}  
+
 
 
 
@@ -720,6 +720,14 @@ As explained in \cite{mccaffrey2013tutorial}, there are several reasons why prop
 
 The author would like to thank Heather Arneson, Paul Lee, Anthony Evans, and Karl Bilimoria of NASA Ames for useful correspondence and feedback.  We also thank our colleagues Matthew Cefalu and Beth Ann Griffin of the RAND Center for Causal Inference for fruitful discussions.  In addition we thank Kenneth Kuhn, Christopher Skeels, and Kyle Murray for collaboration on related research.
 
+\vspace*{-2\baselineskip}
+
+ 
+\begin{IEEEbiographynophoto}{Akhil Shah}
+
+is a Senior Engineer with the RAND Corporation where he develops machine learning and statical methodology for air-traffic and cybersecurity related research problems.  He received his PhD in Theoretical High Energy Physics and M.S. in Electrical Engineering from UCLA.  His previous research involved communication system design and analysis for both wireless and optical applications.  
+\end{IEEEbiographynophoto}
+
 
 
 % trigger a \newpage just before the given reference
@@ -739,7 +747,7 @@ The author would like to thank Heather Arneson, Paul Lee, Anthony Evans, and Kar
 % http://www.michaelshell.org/tex/ieeetran/bibtex/
 \bibliographystyle{IEEEtran}
 % argument is your BibTeX string definitions and bibliography database(s)
-\bibliography{IEEEabrv,/Users/ashah/NoBackup/code/nasa/src/causalInfFAA/doc/causalInfPaper/gdp_causal}
+\bibliography{IEEEabrv,/Users/amu/code/causalInfFAA/doc/causalInfPaper/gdp_causal}
 %
 % <OR> manually copy in the resultant .bbl file
 % set second argument of \begin to the number of references
@@ -751,11 +759,6 @@ The author would like to thank Heather Arneson, Paul Lee, Anthony Evans, and Kar
 %  0.5em minus 0.4em\relax Harlow, England: Addison-Wesley, 1999.
 %
 %\end{thebibliography}
-\vspace*{-2\baselineskip}
-\begin{IEEEbiographynophoto}{Akhil Shah}
-
-is a Senior Engineer with the RAND Corporation where he develops machine learning and statical methodology for air-traffic and cybersecurity related research problems.  He received his PhD in Theoretical High Energy Physics and M.S. in Electrical Engineering from UCLA.  His previous research involved communication system design and analysis for both wireless and optical applications.  
-\end{IEEEbiographynophoto}
 
 
 
