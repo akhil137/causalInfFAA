@@ -255,8 +255,8 @@ xgb.plot.importance(importance_matrix = imp_matrix)
 Focusing on backdated GDP events
 =======================================================
 ```{r,echo=FALSE,eval=FALSE}
-load("~/NoBackup/code/nasa/src/causalInfFAA/data/JFK_GDPStatus_timestamped_data.Rdata")
-load("~/NoBackup/code/nasa/src/causalInfFAA/data/JFK_GDPBackDated_timestamped_data")
+load("~/code/causalInfFAA/data/JFK_GDPStatus_timestamped_data.Rdata")
+load("~/code/causalInfFAA/data/JFK_GDPBackDated_timestamped_data")
 #first check how many days (dates) are in common between forecasted and backdated
 gdponlyroot<-gdponly[gdponly$rootAdv==1,]
 gdponlyroot$backdated<-as.factor(gdponlyroot$startTime-gdponlyroot$sendTime<0)
@@ -306,7 +306,7 @@ First don't use queue length as a covariate
 #load dataset for JFK: covs + outcome (air delay) + treatment status (status)
 library(twang)
 #load("JFK_twang_withASPMweather_noNA_timestamped_data.Rdata")
-ps.model.noqueue<-ps(status ~ A_JFK + windspeed + visibility + crosswinds + vis_ASPM + windspeed_ASPM + ceil_ASPM + crosswind_ASPM,data=twang.complete.bd,estimand="ATT")
+ps.model.noqueue<-ps(status ~ A_JFK + windspeed + visibility + crosswinds + vis_ASPM + windspseed_ASPM + ceil_ASPM + crosswind_ASPM,data=twang.complete.bd,estimand="ATT")
 #show imbalance and balanced tables 
 bal.jfk<-bal.table(ps.model.noqueue)
 pretty.tab <- bal.jfk$unw[,c("tx.mn","ct.mn","ks.pval")]
@@ -361,6 +361,8 @@ Covariate Balancing with PS for backdated 2
 =======================================================
 Now use queue length as a covariate
 ```{r,echo=FALSE,eval=FALSE}
+#loads twang.complete.bd dataframe with backdated gdp events
+load("~/code/causalInfFAA/data/JFK_backdatedGDPOnly_twang_withASPMweather_noNA_timestamped_data.Rdata")
 ps.model.withqueue<-ps(status ~ qlength + A_JFK + windspeed + visibility + crosswinds + vis_ASPM + windspeed_ASPM + ceil_ASPM + crosswind_ASPM,data=twang.complete.bd,estimand="ATT")
 #balance tables
 bal.jfk.withqueue<-bal.table(ps.model.withqueue)
